@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -48,9 +49,14 @@ export function AuthProvider({ children }) {
   }
 
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password)
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email.trim().toLowerCase())
   const logout = () => signOut(auth)
 
-  const value = useMemo(() => ({ user, profile, loading, login, register, logout }), [user, profile, loading])
+  const value = useMemo(
+    () => ({ user, profile, loading, login, register, resetPassword, logout }),
+    [user, profile, loading]
+  )
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

@@ -9,7 +9,8 @@ A modern Daily Time Record web application built with React, Tailwind CSS, Fireb
 - One-click Time In and Time Out
 - Realtime department-wide attendance board
 - Everyone can see Time In / Time Out status for members of the same department
-- Personal DTR history
+- Personal DTR history with date filtering
+- Department attendance board with historical date filtering
 - Responsive professional dashboard
 - Firestore security rules scoped by department
 
@@ -71,8 +72,15 @@ The generated `dist` folder can be deployed to Vercel, Firebase Hosting, Netlify
 
 ## Important production note
 
-The basic version uses a typed department name during registration. For a production organization, use controlled department IDs or invitation codes so users cannot join an arbitrary department by typing its name.
+Registration uses a controlled Department dropdown with **BHROD-HRDD** and **OUHRODI**. For stricter production access, consider assigning department membership through an administrator or invitation code.
 
 ## Attendance integrity
 
-The included Firestore rules prevent an employee from changing their original Time In timestamp and require Time In / Time Out timestamps to resolve to Firestore's server request time. For stricter production use, department membership should be assigned by an administrator or invitation code rather than typed freely at registration.
+The included Firestore rules prevent an employee from changing their original Time In timestamp and require Time In / Time Out timestamps to resolve to Firestore's server request time. For stricter production use, department membership can be assigned by an administrator or invitation code rather than relying only on the registration selection.
+
+
+## Authentication enhancements
+
+- Show/Hide Password controls are available on sign in and account registration.
+- The **Forgot Password** link on the sign-in page sends a Firebase Authentication password reset email.
+- Make sure Email/Password authentication is enabled in Firebase Console under **Authentication → Sign-in method**.

@@ -42,13 +42,17 @@ export async function timeOut(user) {
   })
 }
 
-export function subscribeTodayAttendance(department, callback) {
+export function subscribeAttendanceByDate(department, dateKey, callback) {
   const q = query(
     collection(db, 'attendance'),
     where('department', '==', department),
-    where('dateKey', '==', getLocalDateKey()),
+    where('dateKey', '==', dateKey),
   )
   return onSnapshot(q, (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+}
+
+export function subscribeTodayAttendance(department, callback) {
+  return subscribeAttendanceByDate(department, getLocalDateKey(), callback)
 }
 
 export function subscribeDepartmentUsers(department, callback) {

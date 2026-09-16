@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Badge, Building2, LockKeyhole, Mail, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Badge, Building2, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +17,8 @@ export default function Register() {
     password: '',
     confirm: '',
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -60,10 +62,42 @@ export default function Register() {
           value={form[key]}
           onChange={set(key)}
           placeholder={placeholder}
+          autoComplete={type === 'email' ? 'email' : 'off'}
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
         />
       </div>
     </label>
+  )
+
+  const passwordField = (label, key, show, setShow, placeholder, autoComplete) => (
+    <div>
+      <label htmlFor={`register-${key}`} className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+      <div className="relative">
+        <LockKeyhole size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          id={`register-${key}`}
+          required
+          type={show ? 'text' : 'password'}
+          value={form[key]}
+          onChange={set(key)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          title={show ? 'Hide password' : 'Show password'}
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+      <button type="button" onClick={() => setShow(!show)} className="mt-2 text-xs font-medium text-slate-500 hover:text-slate-900">
+        {show ? 'Hide password' : 'Show password'}
+      </button>
+    </div>
   )
 
   return (
@@ -122,8 +156,8 @@ export default function Register() {
             </div>
           </label>
 
-          {field('Password', 'password', LockKeyhole, 'password', 'Minimum 6 characters')}
-          {field('Confirm password', 'confirm', LockKeyhole, 'password', 'Re-enter password')}
+          {passwordField('Password', 'password', showPassword, setShowPassword, 'Minimum 6 characters', 'new-password')}
+          {passwordField('Confirm password', 'confirm', showConfirm, setShowConfirm, 'Re-enter password', 'new-password')}
 
           {error && (
             <div className="sm:col-span-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">

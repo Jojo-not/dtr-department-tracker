@@ -16,10 +16,17 @@ export default function Login() {
   if (user) return <Navigate to="/" replace />
 
   async function submit(e) {
-    e.preventDefault(); setError(''); setLoading(true)
-    try { await login(email, password); navigate('/') }
-    catch { setError('Unable to sign in. Check your email and password.') }
-    finally { setLoading(false) }
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await login(email, password)
+      navigate('/')
+    } catch {
+      setError('Unable to sign in. Check your email and password.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return <div className="soft-grid min-h-screen bg-slate-50 px-4 py-8">
@@ -39,8 +46,23 @@ export default function Login() {
           <div className="mb-8 lg:hidden"><Logo /></div>
           <div className="mb-8"><p className="text-sm font-semibold text-slate-500">WELCOME BACK</p><h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Sign in to your workspace</h2><p className="mt-2 text-sm text-slate-500">Use your registered account to record and review attendance.</p></div>
           <form onSubmit={submit} className="space-y-5">
-            <label className="block"><span className="mb-2 block text-sm font-medium text-slate-700">Email address</span><div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18}/><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"/></div></label>
-            <label className="block"><span className="mb-2 block text-sm font-medium text-slate-700">Password</span><div className="relative"><LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18}/><input required type={show?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"/><button type="button" onClick={()=>setShow(!show)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label>
+            <label className="block"><span className="mb-2 block text-sm font-medium text-slate-700">Email address</span><div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18}/><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com" autoComplete="email" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"/></div></label>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label htmlFor="login-password" className="text-sm font-medium text-slate-700">Password</label>
+                <Link to="/forgot-password" className="text-sm font-semibold text-slate-700 hover:text-slate-950 hover:underline">Forgot password?</Link>
+              </div>
+              <div className="relative">
+                <LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                <input id="login-password" required type={show?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"/>
+                <button type="button" onClick={()=>setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'} title={show ? 'Hide password' : 'Show password'} className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">{show?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+              </div>
+              <button type="button" onClick={() => setShow(!show)} className="mt-2 text-xs font-medium text-slate-500 hover:text-slate-900">
+                {show ? 'Hide password' : 'Show password'}
+              </button>
+            </div>
+
             {error && <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
             <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:opacity-60">{loading?'Signing in...':'Sign in'} <ArrowRight size={18}/></button>
           </form>
