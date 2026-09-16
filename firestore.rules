@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function myProfile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+
+    match /users/{userId} {
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'employee';
+      allow read: if signedIn() && (
+        request.auth.uid == userId ||
+        resource.data.department == myProfile().department
+      );
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    match /attendance/{recordId} {
+      allow read: if signedIn() && resource.data.department == myProfile().department;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.department == myProfile().department
+        && request.resource.data.status == 'IN'
+        && request.resource.data.timeIn == request.time
+        && request.resource.data.timeOut == null;
+
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.dateKey == resource.data.dateKey
+        && request.resource.data.timeIn == resource.data.timeIn
+        && request.resource.data.status == 'OUT'
+        && request.resource.data.timeOut == request.time;
+
+      allow delete: if false;
+    }
+  }
+}
