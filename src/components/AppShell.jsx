@@ -1,4 +1,4 @@
-import { BarChart3, Clock3, LogOut, Menu, Users, X } from 'lucide-react'
+import { BarChart3, ClipboardCheck, Clock3, LogOut, Menu, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -8,6 +8,7 @@ const links = [
   { to: '/', label: 'Dashboard', icon: BarChart3 },
   { to: '/department', label: 'Department', icon: Users },
   { to: '/my-logs', label: 'My Logs', icon: Clock3 },
+  { to: '/accomplishments', label: 'Accomplishments', icon: ClipboardCheck },
 ]
 
 export default function AppShell({ children }) {
@@ -53,7 +54,7 @@ export default function AppShell({ children }) {
           <button onClick={() => setOpen(true)} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden"><Menu size={20}/></button>
           <div className="ml-auto text-right">
             <div className="text-sm font-semibold text-slate-900">{profile?.department}</div>
-            <div className="text-xs text-slate-500">Department Time In/Out and Attendance Monitoring System</div>
+            <div className="text-xs text-slate-500">Department workspace</div>
           </div>
         </header>
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>

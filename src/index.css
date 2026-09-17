@@ -15,7 +15,7 @@
 * { box-sizing: border-box; }
 html { min-width: 320px; background: #f8fafc; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 
 .glass {
   background: rgba(255, 255, 255, 0.86);
@@ -29,3 +29,58 @@ button, input, select { font: inherit; }
     linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 28px 28px;
 }
+
+/* Word-style accomplishment editor */
+.rich-word-page {
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+}
+.rich-word-page:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+.rich-word-page p,
+.rich-word-page div {
+  margin: 0 0 0.55rem;
+}
+.rich-word-page h1 {
+  margin: 0.4rem 0 0.7rem;
+  font-size: 1.7rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+.rich-word-page h2 {
+  margin: 0.4rem 0 0.65rem;
+  font-size: 1.35rem;
+  line-height: 1.3;
+  font-weight: 700;
+}
+.rich-word-page h3 {
+  margin: 0.35rem 0 0.6rem;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.rich-word-page ul,
+.rich-word-page ol {
+  margin: 0.35rem 0 0.7rem 1.6rem;
+  padding-left: 1rem;
+}
+.rich-word-page ul { list-style: disc; }
+.rich-word-page ol { list-style: decimal; }
+.rich-word-page li { margin: 0.18rem 0; }
+
+.rich-accomplishment-preview p,
+.rich-accomplishment-preview div { margin: 0 0 0.35rem; }
+.rich-accomplishment-preview p:last-child,
+.rich-accomplishment-preview div:last-child { margin-bottom: 0; }
+.rich-accomplishment-preview ul,
+.rich-accomplishment-preview ol { margin: 0.2rem 0 0.45rem 1.15rem; padding-left: 0.8rem; }
+.rich-accomplishment-preview ul { list-style: disc; }
+.rich-accomplishment-preview ol { list-style: decimal; }
+.rich-accomplishment-preview h1,
+.rich-accomplishment-preview h2,
+.rich-accomplishment-preview h3 { margin: 0.2rem 0 0.35rem; font-weight: 700; }
+.rich-accomplishment-preview h1 { font-size: 1.05rem; }
+.rich-accomplishment-preview h2 { font-size: 1rem; }
+.rich-accomplishment-preview h3 { font-size: .95rem; }

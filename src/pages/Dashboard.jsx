@@ -71,7 +71,7 @@ export default function Dashboard() {
   const canTimeIn = attendanceReady && (minePhase === 'NOT_STARTED' || minePhase === 'LUNCH_BREAK')
   const canTimeOut = attendanceReady && (minePhase === 'AM_IN' || minePhase === 'PM_IN')
   const timeInLabel = minePhase === 'LUNCH_BREAK' ? 'PM Time In' : 'AM Time In'
-  const timeOutLabel = minePhase === 'PM_IN' ? 'Final Time Out' : 'AM Time Out'
+  const timeOutLabel = minePhase === 'PM_IN' ? 'Final Time Out' : 'Lunch Time Out'
 
   async function act(type) {
     setBusy(true)
@@ -83,7 +83,7 @@ export default function Dashboard() {
         setMessage(minePhase === 'LUNCH_BREAK' ? 'Afternoon Time In recorded successfully.' : 'Morning Time In recorded successfully.')
       } else {
         await timeOut(user, mine)
-        setMessage(minePhase === 'PM_IN' ? 'Final Time Out recorded successfully.' : 'AM Time Out recorded successfully.')
+        setMessage(minePhase === 'PM_IN' ? 'Final Time Out recorded successfully.' : 'Lunch Time Out recorded successfully.')
       }
     } catch (error) {
       console.error('Attendance write failed:', error)
@@ -153,7 +153,7 @@ export default function Dashboard() {
           <div className="mt-7 grid grid-cols-2 gap-3">
             {[
               ['AM Time In', mineTimes.timeIn1],
-              ['AM Time Out', mineTimes.timeOut1],
+              ['Lunch Time Out', mineTimes.timeOut1],
               ['PM Time In', mineTimes.timeIn2],
               ['Final Time Out', mineTimes.timeOut2],
             ].map(([label, value]) => (

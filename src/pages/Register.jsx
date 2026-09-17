@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Badge, Building2, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Badge, BriefcaseBusiness, Building2, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -13,6 +13,7 @@ export default function Register() {
     name: '',
     email: '',
     employeeId: '',
+    position: '',
     department: '',
     password: '',
     confirm: '',
@@ -126,6 +127,9 @@ export default function Register() {
         <form onSubmit={submit} className="mt-8 grid gap-5 sm:grid-cols-2">
           {field('Full name', 'name', UserRound, 'text', 'Juan Dela Cruz')}
           {field('Employee ID', 'employeeId', Badge, 'text', 'EMP-00123')}
+          <div className="sm:col-span-2">
+            {field('Position', 'position', BriefcaseBusiness, 'text', 'e.g. Technical Assistant I')}
+          </div>
           <div className="sm:col-span-2">
             {field('Email address', 'email', Mail, 'email', 'name@company.com')}
           </div>

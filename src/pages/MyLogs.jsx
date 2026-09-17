@@ -74,7 +74,7 @@ export default function MyLogs() {
               <tr>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4">AM In</th>
-                <th className="px-6 py-4">AM Out</th>
+                <th className="px-6 py-4">Lunch Out</th>
                 <th className="px-6 py-4">PM In</th>
                 <th className="px-6 py-4">PM Out</th>
                 <th className="px-6 py-4">Total</th>

@@ -21,6 +21,55 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /accomplishments/{recordId} {
+      // Accomplishment reports are private to their owner.
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.department == myProfile().department
+        && request.resource.data.name == myProfile().name
+        && request.resource.data.employeeId == myProfile().employeeId
+        && request.resource.data.email == myProfile().email
+        && request.resource.data.dateKey is string
+        && request.resource.data.accomplishment is string
+        && request.resource.data.remarks is string
+        && request.resource.data.accomplishment.size() > 0
+        && request.resource.data.accomplishment.size() <= 5000
+        && (!('accomplishmentHtml' in request.resource.data) || (
+          request.resource.data.accomplishmentHtml is string
+          && request.resource.data.accomplishmentHtml.size() <= 15000
+        ))
+        && request.resource.data.remarks.size() <= 500
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.dateKey is string
+        && request.resource.data.accomplishment is string
+        && request.resource.data.remarks is string
+        && request.resource.data.accomplishment.size() > 0
+        && request.resource.data.accomplishment.size() <= 5000
+        && (!('accomplishmentHtml' in request.resource.data) || (
+          request.resource.data.accomplishmentHtml is string
+          && request.resource.data.accomplishmentHtml.size() <= 15000
+        ))
+        && request.resource.data.remarks.size() <= 500
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'dateKey', 'accomplishment', 'accomplishmentHtml', 'remarks', 'updatedAt'
+        ]);
+
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     match /attendance/{recordId} {
       allow read: if signedIn() && (
         resource.data.uid == request.auth.uid ||

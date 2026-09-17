@@ -32,13 +32,14 @@ export function AuthProvider({ children }) {
     }
   }), [])
 
-  const register = async ({ name, email, password, employeeId, department }) => {
+  const register = async ({ name, email, password, employeeId, position, department }) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(credential.user, { displayName: name })
     const userData = {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       employeeId: employeeId.trim(),
+      position: position.trim(),
       department: department.trim(),
       role: 'employee',
       createdAt: serverTimestamp(),

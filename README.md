@@ -5,7 +5,7 @@ A modern Daily Time Record web application built with React, Tailwind CSS, Fireb
 ## Features
 
 - Email/password registration and login
-- Employee profile with Employee ID + Department
+- Employee profile with Employee ID + Position + Department
 - One-click Time In and Time Out
 - Realtime department-wide attendance board
 - Everyone can see Time In / Time Out status for members of the same department
@@ -47,6 +47,7 @@ The generated `dist` folder can be deployed to Vercel, Firebase Hosting, Netlify
   name,
   email,
   employeeId,
+  position,
   department,
   role: "employee",
   createdAt
@@ -72,7 +73,7 @@ The generated `dist` folder can be deployed to Vercel, Firebase Hosting, Netlify
 
 ## Important production note
 
-Registration uses a controlled Department dropdown with **BHROD-HRDD** and **OUHRODI**. For stricter production access, consider assigning department membership through an administrator or invitation code.
+Registration includes a required **Position** field and uses a controlled Department dropdown with **BHROD-HRDD** and **OUHRODI**. For stricter production access, consider assigning department membership through an administrator or invitation code.
 
 ## Attendance integrity
 
@@ -112,3 +113,78 @@ After replacing the project, publish the included rules once:
 ```bash
 firebase deploy --only firestore:rules
 ```
+
+## Accomplishment Report module
+
+The application now includes a personal **Accomplishment Report** page with full CRUD functionality:
+
+- Create a daily accomplishment with date, accomplishment/output, and optional remarks.
+- View accomplishments grouped by a selected month.
+- Edit existing entries.
+- Delete entries after confirmation.
+- Generate a clean **Monthly Accomplishment Report** with employee name, position, department/office, dates, DTR time logs, accomplishments, remarks, and signature areas.
+- Use **Download Word Report** to create a Microsoft Word (`.docx`) file for the selected month.
+
+### accomplishments/{documentId}
+
+```js
+{
+  uid,
+  name,
+  email,
+  employeeId,
+  department,
+  dateKey: "YYYY-MM-DD",
+  accomplishment,
+  accomplishmentHtml, // rich formatting for new/edited records
+  remarks,
+  createdAt,
+  updatedAt
+}
+```
+
+Accomplishment records are private to the employee who created them. Publish the updated `firestore.rules` before using the module:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+### DTR time log in Accomplishment Reports
+
+The Accomplishment Report now automatically matches each accomplishment date with the employee's attendance record for the same day. The monthly list and downloadable Word report show **AM Time In, Lunch Time Out, PM Time In, Final Time Out, and total worked time**. These values are read from the existing `attendance` collection, so employees do not type their attendance times manually.
+
+## Formal Accomplishment Report Word layout
+The downloaded Microsoft Word report follows the provided formal Individual Daily Log and Accomplishment Report reference:
+- A4 portrait layout using Times New Roman
+- centered `INDIVIDUAL DAILY LOG AND ACCOMPLISHMENT REPORT (WORK FROM HOME)` heading
+- Name, Position, Office, and automatically calculated Date/s Covered
+- two-column table: `Date and Actual Time logs` and `Actual Accomplishments`
+- automatic AM time-in, lunch time-out, PM time-in, and final time-out from DTR records
+- accomplishment formatting preserved from the Word-style editor, including bullets, numbering, emphasis, headings, and alignment
+- Submitted by and Attested by signature areas
+- entries are ordered oldest-to-newest for the selected month
+
+New accounts now save a required `position` value in the employee profile, and the formal Word template uses `profile.position` automatically. Existing profiles created before this update may still display a dash for Position until their profile data is updated. The template also supports `profile.office`, `profile.supervisorName`, and `profile.supervisorPosition` when those fields are available.
+
+## Word-style Accomplishment editor and Microsoft Word download
+
+The Accomplishment Report module now uses a Word-style rich-text editor instead of a plain textarea. Employees can format their daily accomplishment with:
+
+- bold, italic, and underline;
+- bullets and numbered lists;
+- left, center, right, and justified alignment;
+- paragraph/title/heading styles;
+- undo, redo, and clear formatting.
+
+The plain-text version is still stored in `accomplishment` for backward compatibility and list/search use. New and edited records also store sanitized rich text in `accomplishmentHtml`. Existing accomplishment records that do not have `accomplishmentHtml` continue to work and are automatically converted to simple paragraphs when edited or exported.
+
+The previous browser print action is replaced by **Download Word Report**. The app generates a `.docx` file directly in the browser using the `docx` package. The Word report keeps the formal Individual Daily Log and Accomplishment Report layout, including employee name, position, office/department, Date/s Covered, DTR time logs, formatted accomplishments, remarks, and Submitted by / Attested by signature areas.
+
+After installing this update, install the new dependency and republish Firestore rules:
+
+```bash
+npm install
+firebase deploy --only firestore:rules
+```
+
+The updated Firestore rules allow the optional `accomplishmentHtml` field and increase the plain accomplishment limit to 5,000 characters while preserving ownership restrictions.
