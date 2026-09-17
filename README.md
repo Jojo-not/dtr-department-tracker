@@ -84,3 +84,31 @@ The included Firestore rules prevent an employee from changing their original Ti
 - Show/Hide Password controls are available on sign in and account registration.
 - The **Forgot Password** link on the sign-in page sends a Firebase Authentication password reset email.
 - Make sure Email/Password authentication is enabled in Firebase Console under **Authentication → Sign-in method**.
+
+## Two-session DTR flow
+
+Each employee can now record four attendance checkpoints per day in this exact order:
+
+1. **AM Time In** – start of the morning work session.
+2. **Lunch Time Out** – start of the lunch break.
+3. **PM Time In** – return from lunch / start of the afternoon work session.
+4. **Final Time Out** – end of the workday.
+
+The dashboard and DTR logs calculate total worked time as **morning session + afternoon session**, so the lunch break is not included. Department members can see all four timestamps on the shared department board.
+
+After updating the project, publish the included `firestore.rules` again because the attendance security rules now allow the four sequential checkpoints.
+
+## Firestore permission fix (v1.1)
+
+The first AM Time In no longer starts with a Firestore transaction read. The old flow tried to read today's attendance document before it existed, which produced a `BatchGetDocuments: permission-denied` error under the secure Firestore rules. The app now:
+
+- creates the first AM Time In directly with `setDoc()`;
+- advances Lunch Out, PM In, and Final Out with `updateDoc()`;
+- relies on `firestore.rules` to enforce the correct checkpoint order;
+- shows Firestore permission errors as a red error notice.
+
+After replacing the project, publish the included rules once:
+
+```bash
+firebase deploy --only firestore:rules
+```

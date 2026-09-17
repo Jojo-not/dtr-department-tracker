@@ -22,23 +22,73 @@ service cloud.firestore {
     }
 
     match /attendance/{recordId} {
-      allow read: if signedIn() && resource.data.department == myProfile().department;
+      allow read: if signedIn() && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.department == myProfile().department
+      );
 
+      // First Time In of the day creates the record.
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.department == myProfile().department
         && request.resource.data.status == 'IN'
-        && request.resource.data.timeIn == request.time
-        && request.resource.data.timeOut == null;
+        && request.resource.data.timeIn1 == request.time
+        && request.resource.data.timeOut1 == null
+        && request.resource.data.timeIn2 == null
+        && request.resource.data.timeOut2 == null
+        && request.resource.data.updatedAt == request.time;
 
+      // Only the owner can advance the day's DTR checkpoints.
       allow update: if signedIn()
         && resource.data.uid == request.auth.uid
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.department == resource.data.department
         && request.resource.data.dateKey == resource.data.dateKey
-        && request.resource.data.timeIn == resource.data.timeIn
-        && request.resource.data.status == 'OUT'
-        && request.resource.data.timeOut == request.time;
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.updatedAt == request.time
+        && (
+          // Morning Time In -> Lunch Time Out
+          (
+            'timeIn1' in resource.data
+            && resource.data.timeIn1 != null
+            && resource.data.timeOut1 == null
+            && request.resource.data.timeOut1 == request.time
+            && request.resource.data.status == 'BREAK'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeOut1', 'status', 'updatedAt'])
+          )
+          ||
+          // Lunch Time Out -> Afternoon Time In
+          (
+            'timeIn1' in resource.data
+            && resource.data.timeOut1 != null
+            && resource.data.timeIn2 == null
+            && request.resource.data.timeIn2 == request.time
+            && request.resource.data.status == 'IN'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeIn2', 'status', 'updatedAt'])
+          )
+          ||
+          // Afternoon Time In -> Final Time Out
+          (
+            'timeIn1' in resource.data
+            && resource.data.timeIn2 != null
+            && resource.data.timeOut2 == null
+            && request.resource.data.timeOut2 == request.time
+            && request.resource.data.status == 'OUT'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeOut2', 'status', 'updatedAt'])
+          )
+          ||
+          // Compatibility for an active record made by the previous one-session version.
+          (
+            !('timeIn1' in resource.data)
+            && resource.data.timeIn != null
+            && resource.data.timeOut == null
+            && request.resource.data.timeOut == request.time
+            && request.resource.data.status == 'OUT'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeOut', 'status', 'updatedAt'])
+          )
+        );
 
       allow delete: if false;
     }

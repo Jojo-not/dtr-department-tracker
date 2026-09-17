@@ -28,6 +28,41 @@ export function minutesBetween(start, end) {
   return Math.max(0, Math.floor((e - s) / 60000))
 }
 
+
+export function attendanceTimes(record) {
+  if (!record) return { timeIn1: null, timeOut1: null, timeIn2: null, timeOut2: null }
+
+  if (!record.timeIn1 && record.timeIn) {
+    return {
+      timeIn1: record.timeIn,
+      timeOut1: record.timeOut || null,
+      timeIn2: null,
+      timeOut2: null,
+    }
+  }
+
+  return {
+    timeIn1: record.timeIn1 || null,
+    timeOut1: record.timeOut1 || null,
+    timeIn2: record.timeIn2 || null,
+    timeOut2: record.timeOut2 || null,
+  }
+}
+
+export function attendanceMinutes(record) {
+  if (!record) return 0
+
+  // Original one-session records.
+  if (!record.timeIn1 && record.timeIn) {
+    return minutesBetween(record.timeIn, record.timeOut)
+  }
+
+  let total = 0
+  if (record.timeIn1) total += minutesBetween(record.timeIn1, record.timeOut1)
+  if (record.timeIn2) total += minutesBetween(record.timeIn2, record.timeOut2)
+  return total
+}
+
 export function humanDuration(minutes) {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60

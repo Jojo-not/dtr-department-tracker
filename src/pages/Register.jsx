@@ -95,6 +95,7 @@ export default function Register() {
         </button>
       </div>
       <button type="button" onClick={() => setShow(!show)} className="mt-2 text-xs font-medium text-slate-500 hover:text-slate-900">
+        {show ? 'Hide password' : 'Show password'}
       </button>
     </div>
   )
