@@ -34,14 +34,14 @@ export function subscribeMyAccomplishments(uid, onData, onError) {
 export async function createAccomplishment(user, profile, values) {
   return addDoc(collection(db, 'accomplishments'), {
     uid: user.uid,
-    name: profile.name || '',
-    email: profile.email || user.email || '',
-    employeeId: profile.employeeId || '',
-    department: profile.department || '',
-    dateKey: values.dateKey,
-    accomplishment: values.accomplishment.trim(),
-    accomplishmentHtml: sanitizeRichHtml(values.accomplishmentHtml || plainTextToHtml(values.accomplishment)),
-    remarks: values.remarks.trim(),
+    name: String(profile?.name ?? ''),
+    email: String(profile?.email ?? user?.email ?? ''),
+    employeeId: String(profile?.employeeId ?? ''),
+    department: String(profile?.department ?? ''),
+    dateKey: String(values?.dateKey ?? ''),
+    accomplishment: String(values?.accomplishment ?? '').trim(),
+    accomplishmentHtml: sanitizeRichHtml(values?.accomplishmentHtml || plainTextToHtml(String(values?.accomplishment ?? ''))),
+    remarks: String(values?.remarks ?? '').trim(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -49,10 +49,10 @@ export async function createAccomplishment(user, profile, values) {
 
 export async function updateAccomplishment(recordId, values) {
   return updateDoc(doc(db, 'accomplishments', recordId), {
-    dateKey: values.dateKey,
-    accomplishment: values.accomplishment.trim(),
-    accomplishmentHtml: sanitizeRichHtml(values.accomplishmentHtml || plainTextToHtml(values.accomplishment)),
-    remarks: values.remarks.trim(),
+    dateKey: String(values?.dateKey ?? ''),
+    accomplishment: String(values?.accomplishment ?? '').trim(),
+    accomplishmentHtml: sanitizeRichHtml(values?.accomplishmentHtml || plainTextToHtml(String(values?.accomplishment ?? ''))),
+    remarks: String(values?.remarks ?? '').trim(),
     updatedAt: serverTimestamp(),
   })
 }

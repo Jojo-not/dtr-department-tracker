@@ -76,16 +76,30 @@ service cloud.firestore {
         resource.data.department == myProfile().department
       );
 
-      // First Time In of the day creates the record.
+      // A daily record is created either by the first AM Time In or by
+      // selecting the non-attendance status On Leave / On Travel before Time In.
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.department == myProfile().department
-        && request.resource.data.status == 'IN'
-        && request.resource.data.timeIn1 == request.time
-        && request.resource.data.timeOut1 == null
-        && request.resource.data.timeIn2 == null
-        && request.resource.data.timeOut2 == null
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            request.resource.data.status == 'IN'
+            && request.resource.data.timeIn1 == request.time
+            && request.resource.data.timeOut1 == null
+            && request.resource.data.timeIn2 == null
+            && request.resource.data.timeOut2 == null
+          )
+          ||
+          (
+            request.resource.data.status in ['LEAVE', 'TRAVEL']
+            && request.resource.data.timeIn1 == null
+            && request.resource.data.timeOut1 == null
+            && request.resource.data.timeIn2 == null
+            && request.resource.data.timeOut2 == null
+            && request.resource.data.statusSetAt == request.time
+          )
+        );
 
       // Only the owner can advance the day's DTR checkpoints.
       allow update: if signedIn()

@@ -1,5 +1,7 @@
 import {
+  AlertCircle,
   CalendarDays,
+  CheckCircle2,
   Clock3,
   ClipboardCheck,
   FileDown,
@@ -13,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import RichTextEditor from '../components/RichTextEditor'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   createAccomplishment,
   removeAccomplishment,
@@ -59,6 +62,8 @@ export default function Accomplishments() {
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('success')
 
@@ -145,17 +150,21 @@ export default function Accomplishments() {
   async function submit(event) {
     event.preventDefault()
     setMessage('')
-    if (!form.accomplishment.trim()) {
+    const accomplishmentText = String(form?.accomplishment ?? '')
+    const accomplishmentHtml = String(form?.accomplishmentHtml ?? '')
+    const dateKey = String(form?.dateKey ?? '')
+
+    if (!accomplishmentText.trim()) {
       setMessageType('error')
       setMessage('Please enter your accomplishment for the selected date.')
       return
     }
-    if (form.accomplishment.length > 5000) {
+    if (accomplishmentText.length > 5000) {
       setMessageType('error')
       setMessage('The accomplishment is too long. Please keep it within 5,000 characters.')
       return
     }
-    if ((form.accomplishmentHtml || '').length > 15000) {
+    if (accomplishmentHtml.length > 15000) {
       setMessageType('error')
       setMessage('The formatted accomplishment is too large. Please simplify the formatting and try again.')
       return
@@ -171,7 +180,7 @@ export default function Accomplishments() {
         setMessage('Accomplishment added successfully.')
       }
       setMessageType('success')
-      setMonth(form.dateKey.slice(0, 7))
+      setMonth(dateKey.slice(0, 7))
       cancelForm()
     } catch (error) {
       console.error('Accomplishment write failed:', error)
@@ -179,30 +188,39 @@ export default function Accomplishments() {
       setMessage(
         error?.code === 'permission-denied'
           ? 'Firestore permission denied. Publish the latest firestore.rules, then try again.'
-          : error?.message || 'Unable to save this accomplishment.'
+          : 'Unable to save this accomplishment. Please review the entry and try again.'
       )
     } finally {
       setBusy(false)
     }
   }
 
-  async function deleteRecord(record) {
-    const accepted = window.confirm(`Delete the accomplishment dated ${readableDate(record.dateKey)}?`)
-    if (!accepted) return
+  function requestDelete(record) {
+    setDeleteTarget(record)
+    setMessage('')
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget?.id || deleting) return
+    const record = deleteTarget
+    setDeleting(true)
     setMessage('')
     try {
       await removeAccomplishment(record.id)
       setMessageType('success')
       setMessage('Accomplishment deleted successfully.')
       if (editingId === record.id) cancelForm()
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Accomplishment delete failed:', error)
       setMessageType('error')
       setMessage(
         error?.code === 'permission-denied'
           ? 'Firestore permission denied. Publish the latest firestore.rules, then try again.'
-          : 'Unable to delete this accomplishment.'
+          : 'Unable to delete this accomplishment. Please try again.'
       )
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -236,10 +254,13 @@ export default function Accomplishments() {
   function timeLogFor(dateKey) {
     const attendance = attendanceByDate[dateKey]
     const times = attendanceTimes(attendance)
+    const away = ['LEAVE', 'TRAVEL'].includes(attendance?.status)
     return {
       attendance,
+      away,
+      status: attendance?.status,
       ...times,
-      total: attendance ? humanDuration(attendanceMinutes(attendance)) : '—',
+      total: attendance && !away ? humanDuration(attendanceMinutes(attendance)) : '—',
     }
   }
 
@@ -270,8 +291,12 @@ export default function Accomplishments() {
       </div>
 
       {message && (
-        <div className={`mb-5 rounded-xl border px-4 py-3 text-sm ${messageType === 'error' ? 'border-rose-100 bg-rose-50 text-rose-700' : 'border-emerald-100 bg-emerald-50 text-emerald-700'}`}>
-          {message}
+        <div className={`mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-sm ${messageType === 'error' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`} role={messageType === 'error' ? 'alert' : 'status'}>
+          <div className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl ${messageType === 'error' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+            {messageType === 'error' ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
+          </div>
+          <div className="min-w-0 flex-1 pt-1 leading-5">{message}</div>
+          <button type="button" onClick={() => setMessage('')} className="grid size-8 shrink-0 place-items-center rounded-lg text-current/60 transition hover:bg-white/60 hover:text-current" aria-label="Dismiss message"><X size={16} /></button>
         </div>
       )}
 
@@ -293,7 +318,7 @@ export default function Accomplishments() {
                 <input
                   required
                   type="date"
-                  value={form.dateKey}
+                  value={form?.dateKey || ''}
                   onChange={event => setForm(current => ({ ...current, dateKey: event.target.value }))}
                   className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
@@ -303,10 +328,10 @@ export default function Accomplishments() {
             <div className="block">
               <div className="mb-2 flex items-end justify-between gap-3">
                 <span className="block text-sm font-medium text-slate-700">Accomplishment</span>
-                <span className={`text-xs ${form.accomplishment.length > 5000 ? 'font-semibold text-rose-600' : 'text-slate-400'}`}>{form.accomplishment.length}/5000 characters</span>
+                <span className={`text-xs ${String(form?.accomplishment ?? '').length > 5000 ? 'font-semibold text-rose-600' : 'text-slate-400'}`}>{String(form?.accomplishment ?? '').length}/5000 characters</span>
               </div>
               <RichTextEditor
-                value={form.accomplishmentHtml}
+                value={form?.accomplishmentHtml || ''}
                 disabled={busy}
                 onChange={({ html, text }) => setForm(current => ({
                   ...current,
@@ -322,7 +347,7 @@ export default function Accomplishments() {
               <input
                 type="text"
                 maxLength={500}
-                value={form.remarks}
+                value={form?.remarks || ''}
                 onChange={event => setForm(current => ({ ...current, remarks: event.target.value }))}
                 placeholder="Optional note, status, reference, or output"
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
@@ -364,6 +389,7 @@ export default function Accomplishments() {
                 <th className="w-44 px-6 py-4">Date</th>
                 <th className="w-64 px-6 py-4">DTR Time Log</th>
                 <th className="px-6 py-4">Accomplishment</th>
+                <th className="w-56 px-6 py-4">Remarks</th>
                 <th className="w-32 px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -375,10 +401,17 @@ export default function Accomplishments() {
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900">{readableDate(record.dateKey)}</td>
                     <td className="px-6 py-4">
                       {log.attendance ? (
-                        <div className="space-y-1.5 text-xs text-slate-600">
-                          <div><span className="font-semibold text-slate-800">Time In:</span> {formatTime(log.timeIn1)}</div>
-                          <div><span className="font-semibold text-slate-800">Time Out:</span> {formatTime(log.timeOut2)}</div>
-                        </div>
+                        log.away ? (
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${log.status === 'LEAVE' ? 'bg-violet-50 text-violet-700' : 'bg-sky-50 text-sky-700'}`}>
+                            {log.status === 'LEAVE' ? 'On Leave' : 'On Travel'}
+                          </span>
+                        ) : (
+                          <div className="space-y-1.5 text-xs text-slate-600">
+                            <div><span className="font-semibold text-slate-800">Time In:</span> {formatTime(log.timeIn1)}</div>
+                            <div><span className="font-semibold text-slate-800">Time Out:</span> {formatTime(log.timeOut2)}</div>
+                           
+                          </div>
+                        )
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={14} /> No DTR record</span>
                       )}
@@ -391,10 +424,11 @@ export default function Accomplishments() {
                         }}
                       />
                     </td>
+                    <td className="whitespace-pre-wrap px-6 py-4 text-sm leading-6 text-slate-500">{record.remarks || '—'}</td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => startEdit(record)} title="Edit" className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"><Pencil size={16} /></button>
-                        <button type="button" onClick={() => deleteRecord(record)} title="Delete" className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"><Trash2 size={16} /></button>
+                        <button type="button" onClick={() => requestDelete(record)} title="Delete" className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -413,6 +447,17 @@ export default function Accomplishments() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete accomplishment?"
+        description={deleteTarget ? readableDate(deleteTarget.dateKey) : ''}
+        confirmLabel="Delete"
+        busy={deleting}
+        variant="danger"
+        onCancel={() => { if (!deleting) setDeleteTarget(null) }}
+        onConfirm={confirmDelete}
+      />
 
     </div>
   )

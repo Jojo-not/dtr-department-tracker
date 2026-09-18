@@ -188,3 +188,24 @@ firebase deploy --only firestore:rules
 ```
 
 The updated Firestore rules allow the optional `accomplishmentHtml` field and increase the plain accomplishment limit to 5,000 characters while preserving ownership restrictions.
+
+## On Leave / On Travel daily status
+
+The dashboard now includes **On Leave** and **On Travel** actions. These statuses are intended for a whole day and can only be selected **before the employee records the first AM Time In**.
+
+When selected:
+
+- today's attendance record is saved with `status: "LEAVE"` or `status: "TRAVEL"`;
+- AM Time In, Lunch Time Out, PM Time In, and Final Time Out are disabled for that day;
+- the shared Department Board immediately shows **On Leave** or **On Travel**;
+- My DTR Logs keeps the status as part of the employee's attendance history;
+- the Accomplishment Word report displays **ON LEAVE** or **ON TRAVEL** instead of empty time punches when that date is included.
+
+Publish the latest rules after installing this update:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+### Professional Leave / Travel confirmation
+The dashboard uses a custom responsive confirmation modal for **On Leave** and **On Travel** instead of the browser's native `window.confirm()` dialog. The modal supports cancel/close, Escape-key dismissal, outside-click dismissal, and a saving/loading state.

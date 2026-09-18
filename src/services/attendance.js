@@ -15,8 +15,15 @@ export function attendanceId(uid, dateKey = getLocalDateKey()) {
   return `${uid}_${dateKey}`
 }
 
+export function isDayStatus(record) {
+  return record?.status === 'LEAVE' || record?.status === 'TRAVEL'
+}
+
 export function getAttendancePhase(record) {
   if (!record) return 'NOT_STARTED'
+
+  if (record.status === 'LEAVE') return 'ON_LEAVE'
+  if (record.status === 'TRAVEL') return 'ON_TRAVEL'
 
   // Backward compatibility for records created before the two-session update.
   if (!record.timeIn1 && record.timeIn) {
@@ -30,22 +37,44 @@ export function getAttendancePhase(record) {
   return 'COMPLETED'
 }
 
-/**
- * Record either the first AM Time In or the second PM Time In.
- *
- * Important: the first Time In intentionally uses setDoc() without first
- * reading the attendance document. The previous transaction implementation
- * performed a BatchGetDocuments read on a document that does not exist yet,
- * and the Firestore rules correctly rejected that read. That caused the
- * "Missing or insufficient permissions" error before the create could run.
- *
- * Firestore security rules still validate the complete write and prevent
- * users from skipping or overwriting attendance checkpoints.
- */
+export async function markDayStatus(user, profile, status, currentRecord = null) {
+  if (!['LEAVE', 'TRAVEL'].includes(status)) throw new Error('Invalid day status.')
+
+  const phase = getAttendancePhase(currentRecord)
+  if (phase !== 'NOT_STARTED') {
+    if (phase === 'ON_LEAVE') throw new Error('You are already marked On Leave today.')
+    if (phase === 'ON_TRAVEL') throw new Error('You are already marked On Travel today.')
+    throw new Error('Leave or travel can only be selected before your first Time In for the day.')
+  }
+
+  const dateKey = getLocalDateKey()
+  const ref = doc(db, 'attendance', attendanceId(user.uid, dateKey))
+
+  await setDoc(ref, {
+    uid: user.uid,
+    name: profile.name,
+    email: profile.email,
+    employeeId: profile.employeeId,
+    department: profile.department,
+    dateKey,
+    timeIn1: null,
+    timeOut1: null,
+    timeIn2: null,
+    timeOut2: null,
+    status,
+    statusSetAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** Record either the first AM Time In or the second PM Time In. */
 export async function timeIn(user, profile, currentRecord = null) {
   const dateKey = getLocalDateKey()
   const ref = doc(db, 'attendance', attendanceId(user.uid, dateKey))
   const phase = getAttendancePhase(currentRecord)
+
+  if (phase === 'ON_LEAVE') throw new Error('Attendance is disabled because you are marked On Leave today.')
+  if (phase === 'ON_TRAVEL') throw new Error('Attendance is disabled because you are marked On Travel today.')
 
   if (phase === 'NOT_STARTED') {
     await setDoc(ref, {
@@ -86,6 +115,9 @@ export async function timeOut(user, currentRecord) {
   const dateKey = getLocalDateKey()
   const ref = doc(db, 'attendance', attendanceId(user.uid, dateKey))
   const phase = getAttendancePhase(currentRecord)
+
+  if (phase === 'ON_LEAVE') throw new Error('Attendance is disabled because you are marked On Leave today.')
+  if (phase === 'ON_TRAVEL') throw new Error('Attendance is disabled because you are marked On Travel today.')
 
   // Backward compatibility for an active record using the original schema.
   if (currentRecord && !currentRecord.timeIn1 && currentRecord.timeIn && !currentRecord.timeOut) {

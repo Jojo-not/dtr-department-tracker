@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { subscribeMyAttendance } from '../services/attendance'
 import { attendanceMinutes, attendanceTimes, formatTime, humanDuration } from '../utils/date'
+import StatusBadge from '../components/StatusBadge'
 
 export default function MyLogs() {
   const { user } = useAuth()
@@ -17,7 +18,7 @@ export default function MyLogs() {
   )
 
   const total = useMemo(
-    () => filteredLogs.reduce((sum, log) => sum + attendanceMinutes(log), 0),
+    () => filteredLogs.reduce((sum, log) => sum + (['LEAVE', 'TRAVEL'].includes(log.status) ? 0 : attendanceMinutes(log)), 0),
     [filteredLogs],
   )
 
@@ -27,7 +28,7 @@ export default function MyLogs() {
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><Clock3 size={16} /> Personal attendance</div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">My DTR logs</h1>
-          <p className="mt-2 text-sm text-slate-500">Your morning and afternoon attendance history.</p>
+          <p className="mt-2 text-sm text-slate-500">Your attendance history, including Leave and Travel days.</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -63,7 +64,6 @@ export default function MyLogs() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-sm text-slate-500">Recorded work hours</div>
           <div className="mt-2 text-3xl font-semibold">{humanDuration(total)}</div>
-          <div className="mt-1 text-xs text-slate-400">Lunch breaks are excluded.</div>
         </div>
       </div>
 
@@ -84,19 +84,16 @@ export default function MyLogs() {
             <tbody className="divide-y divide-slate-100">
               {filteredLogs.map(log => {
                 const times = attendanceTimes(log)
+                const away = ['LEAVE', 'TRAVEL'].includes(log.status)
                 return (
                   <tr key={log.id}>
                     <td className="px-6 py-4 font-semibold text-slate-900">{log.dateKey}</td>
-                    <td className="px-6 py-4 text-sm">{formatTime(times.timeIn1)}</td>
-                    <td className="px-6 py-4 text-sm">{formatTime(times.timeOut1)}</td>
-                    <td className="px-6 py-4 text-sm">{formatTime(times.timeIn2)}</td>
-                    <td className="px-6 py-4 text-sm">{formatTime(times.timeOut2)}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{humanDuration(attendanceMinutes(log))}</td>
-                    <td className="px-6 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${log.status === 'OUT' ? 'bg-slate-100 text-slate-700' : log.status === 'BREAK' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                        {log.status === 'OUT' ? 'Completed' : log.status === 'BREAK' ? 'Lunch Break' : 'Active'}
-                      </span>
-                    </td>
+                    <td className="px-6 py-4 text-sm">{away ? '—' : formatTime(times.timeIn1)}</td>
+                    <td className="px-6 py-4 text-sm">{away ? '—' : formatTime(times.timeOut1)}</td>
+                    <td className="px-6 py-4 text-sm">{away ? '—' : formatTime(times.timeIn2)}</td>
+                    <td className="px-6 py-4 text-sm">{away ? '—' : formatTime(times.timeOut2)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{away ? '—' : humanDuration(attendanceMinutes(log))}</td>
+                    <td className="px-6 py-4"><StatusBadge status={log.status} /></td>
                   </tr>
                 )
               })}

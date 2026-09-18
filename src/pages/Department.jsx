@@ -36,7 +36,7 @@ export default function Department() {
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><UsersRound size={16} /> {profile?.department}</div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Department board</h1>
-          <p className="mt-2 text-sm text-slate-500">View both AM and PM DTR sessions for everyone in your department.</p>
+          <p className="mt-2 text-sm text-slate-500">View DTR sessions and daily Leave/Travel status for everyone in your department.</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -88,6 +88,7 @@ export default function Department() {
             <tbody className="divide-y divide-slate-100">
               {rows.map(person => {
                 const times = attendanceTimes(person.attendance)
+                const away = ['LEAVE', 'TRAVEL'].includes(person.attendance?.status)
                 return (
                   <tr key={person.id} className="hover:bg-slate-50/80">
                     <td className="px-6 py-4">
@@ -95,11 +96,11 @@ export default function Department() {
                       <div className="mt-0.5 text-xs text-slate-500">{person.employeeId} · {person.email}</div>
                     </td>
                     <td className="px-6 py-4"><StatusBadge status={person.attendance?.status} /></td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{formatTime(times.timeIn1)}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{formatTime(times.timeOut1)}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{formatTime(times.timeIn2)}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{formatTime(times.timeOut2)}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{person.attendance ? humanDuration(attendanceMinutes(person.attendance)) : '—'}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{away ? '—' : formatTime(times.timeIn1)}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{away ? '—' : formatTime(times.timeOut1)}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{away ? '—' : formatTime(times.timeIn2)}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{away ? '—' : formatTime(times.timeOut2)}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{person.attendance && !away ? humanDuration(attendanceMinutes(person.attendance)) : '—'}</td>
                   </tr>
                 )
               })}

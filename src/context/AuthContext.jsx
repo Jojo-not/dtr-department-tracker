@@ -36,11 +36,11 @@ export function AuthProvider({ children }) {
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(credential.user, { displayName: name })
     const userData = {
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      employeeId: employeeId.trim(),
-      position: position.trim(),
-      department: department.trim(),
+      name: String(name ?? '').trim(),
+      email: String(email ?? '').trim().toLowerCase(),
+      employeeId: String(employeeId ?? '').trim(),
+      position: String(position ?? '').trim(),
+      department: String(department ?? '').trim(),
       role: 'employee',
       createdAt: serverTimestamp(),
     }
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
   }
 
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password)
-  const resetPassword = (email) => sendPasswordResetEmail(auth, email.trim().toLowerCase())
+  const resetPassword = (email) => sendPasswordResetEmail(auth, String(email ?? '').trim().toLowerCase())
   const logout = () => signOut(auth)
 
   const value = useMemo(
