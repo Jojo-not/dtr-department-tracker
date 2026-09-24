@@ -182,9 +182,7 @@ function timeLogParagraphs(attendance) {
 
   const times = attendanceTimes(attendance)
   const lines = [
-    ['AM time-in: ', wordTime(times.timeIn1)],
-    ['Lunch time-out: ', wordTime(times.timeOut1)],
-    ['PM time-in: ', wordTime(times.timeIn2)],
+    ['Time-in: ', wordTime(times.timeIn1)],
     ['Time-out: ', wordTime(times.timeOut2)],
   ]
 
@@ -269,14 +267,6 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
       new Paragraph({ children: [run(shortDate(record.dateKey), { italics: true })], spacing: { after: 40 } }),
       ...timeLogParagraphs(attendance),
     ]
-
-    if (attendance && !['LEAVE', 'TRAVEL'].includes(attendance.status)) {
-      logChildren.push(new Paragraph({
-        children: [run(`Total worked: ${humanDuration(attendanceMinutes(attendance))}`, { bold: true, size: 18 })],
-        spacing: { before: 35, after: 0 },
-      }))
-    }
-
     const accomplishmentChildren = richHtmlToParagraphs(record.accomplishmentHtml, record.accomplishment)
     if (record.remarks) {
       accomplishmentChildren.push(new Paragraph({
