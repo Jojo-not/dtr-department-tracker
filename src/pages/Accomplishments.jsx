@@ -342,18 +342,6 @@ export default function Accomplishments() {
               <p className="mt-2 text-xs leading-5 text-slate-400">Use the toolbar for bold, italic, underline, bullets, numbering, paragraph styles, and text alignment. This formatting is included in the downloaded Word report.</p>
             </div>
 
-            <label className="block lg:col-start-2">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Remarks <span className="font-normal text-slate-400">(optional)</span></span>
-              <input
-                type="text"
-                maxLength={500}
-                value={form?.remarks || ''}
-                onChange={event => setForm(current => ({ ...current, remarks: event.target.value }))}
-                placeholder="Optional note, status, reference, or output"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-              />
-            </label>
-
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end lg:col-start-2">
               <button type="button" onClick={cancelForm} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Cancel</button>
               <button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
@@ -389,7 +377,6 @@ export default function Accomplishments() {
                 <th className="w-44 px-6 py-4">Date</th>
                 <th className="w-64 px-6 py-4">DTR Time Log</th>
                 <th className="px-6 py-4">Accomplishment</th>
-                <th className="w-56 px-6 py-4">Remarks</th>
                 <th className="w-32 px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -424,7 +411,6 @@ export default function Accomplishments() {
                         }}
                       />
                     </td>
-                    <td className="whitespace-pre-wrap px-6 py-4 text-sm leading-6 text-slate-500">{record.remarks || '—'}</td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => startEdit(record)} title="Edit" className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"><Pencil size={16} /></button>
