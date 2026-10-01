@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import RichTextEditor from '../components/RichTextEditor'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -54,6 +55,9 @@ const emptyForm = () => ({
 
 export default function Accomplishments() {
   const { user, profile } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const returnToDashboardAfterSave = location.state?.returnToDashboardAfterSave === true
   const [records, setRecords] = useState([])
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [month, setMonth] = useState(getMonthKey())
@@ -66,6 +70,15 @@ export default function Accomplishments() {
   const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('success')
+
+  useEffect(() => {
+    if (!returnToDashboardAfterSave) return
+    setEditingId(null)
+    setForm({ ...emptyForm(), dateKey: getLocalDateKey() })
+    setShowForm(true)
+    setMessage('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [location.key, returnToDashboardAfterSave])
 
   useEffect(() => {
     if (!user?.uid) return undefined
@@ -179,6 +192,10 @@ export default function Accomplishments() {
         await createAccomplishment(user, profile, form)
         setMessage('Accomplishment added successfully.')
       }
+      if (returnToDashboardAfterSave) {
+        navigate('/', { state: { accomplishmentSaved: true, dateKey } })
+        return
+      }
       setMessageType('success')
       setMonth(dateKey.slice(0, 7))
       cancelForm()
@@ -266,6 +283,11 @@ export default function Accomplishments() {
 
   return (
     <div className="mx-auto max-w-7xl">
+      {returnToDashboardAfterSave && (
+        <div className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800" role="status">
+          Add today’s accomplishment before your final time out. After saving, you’ll return to the dashboard to complete your time out.
+        </div>
+      )}
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><ClipboardCheck size={16} /> Daily work record</div>
@@ -320,6 +342,7 @@ export default function Accomplishments() {
                   type="date"
                   value={form?.dateKey || ''}
                   onChange={event => setForm(current => ({ ...current, dateKey: event.target.value }))}
+                  disabled={returnToDashboardAfterSave}
                   className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
               </div>

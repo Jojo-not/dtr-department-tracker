@@ -1,5 +1,6 @@
 import { CalendarDays, CalendarOff, Clock3, Coffee, LogIn, LogOut, Plane, TimerReset, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   getAttendancePhase,
@@ -9,14 +10,20 @@ import {
   timeIn,
   timeOut,
 } from '../services/attendance'
+import { subscribeMyAccomplishments } from '../services/accomplishments'
 import { attendanceMinutes, attendanceTimes, formatTime, getLocalDateKey, humanDuration } from '../utils/date'
 import StatusBadge from '../components/StatusBadge'
 import DayStatusModal from '../components/DayStatusModal'
 
 export default function Dashboard() {
   const { user, profile } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [people, setPeople] = useState([])
   const [attendance, setAttendance] = useState([])
+  const [accomplishments, setAccomplishments] = useState([])
+  const [accomplishmentsReady, setAccomplishmentsReady] = useState(false)
+  const [savedAccomplishmentDate, setSavedAccomplishmentDate] = useState(null)
   const [attendanceReady, setAttendanceReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(new Date())
@@ -57,6 +64,35 @@ export default function Dashboard() {
     }
   }, [profile?.department])
 
+  useEffect(() => {
+    if (!user?.uid) return undefined
+    setAccomplishmentsReady(false)
+    return subscribeMyAccomplishments(
+      user.uid,
+      records => {
+        setAccomplishments(records)
+        setAccomplishmentsReady(true)
+      },
+      error => {
+        console.error('Accomplishment subscription on dashboard failed:', error)
+        setMessageType('error')
+        setMessage(
+          error?.code === 'permission-denied'
+            ? 'Firestore permission denied while checking today’s accomplishment. Publish the latest firestore.rules.'
+            : 'Unable to verify today’s accomplishment. Please refresh the page.'
+        )
+      },
+    )
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (!location.state?.accomplishmentSaved) return
+    setSavedAccomplishmentDate(location.state.dateKey || getLocalDateKey())
+    setMessageType('success')
+    setMessage('Accomplishment saved. You can now record your final time out.')
+    navigate('/', { replace: true, state: null })
+  }, [location.key, location.state, navigate])
+
   const mine = attendance.find(item => item.uid === user.uid)
   const mineTimes = attendanceTimes(mine)
   const minePhase = getAttendancePhase(mine)
@@ -78,6 +114,8 @@ export default function Dashboard() {
 
   const canTimeIn = attendanceReady && !isAway && (minePhase === 'NOT_STARTED' || minePhase === 'LUNCH_BREAK')
   const canTimeOut = attendanceReady && !isAway && (minePhase === 'AM_IN' || minePhase === 'PM_IN')
+  const hasTodayAccomplishment = savedAccomplishmentDate === getLocalDateKey()
+    || accomplishments.some(record => record.dateKey === getLocalDateKey())
   const canMarkAway = attendanceReady && minePhase === 'NOT_STARTED'
   const timeInLabel = minePhase === 'LUNCH_BREAK' ? 'PM Time In' : 'AM Time In'
   const timeOutLabel = minePhase === 'PM_IN' ? 'Final Time Out' : 'Lunch Time Out'
@@ -91,6 +129,15 @@ export default function Dashboard() {
         await timeIn(user, profile, mine)
         setMessage(minePhase === 'LUNCH_BREAK' ? 'Afternoon Time In recorded successfully.' : 'Morning Time In recorded successfully.')
       } else {
+        if (minePhase === 'PM_IN') {
+          if (!accomplishmentsReady) {
+            throw new Error('Unable to verify today’s accomplishment. Please wait a moment and try again.')
+          }
+          if (!hasTodayAccomplishment) {
+            navigate('/accomplishments', { state: { returnToDashboardAfterSave: true } })
+            return
+          }
+        }
         await timeOut(user, mine)
         setMessage(minePhase === 'PM_IN' ? 'Final Time Out recorded successfully.' : 'Lunch Time Out recorded successfully.')
       }
