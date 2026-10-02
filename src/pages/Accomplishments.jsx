@@ -124,15 +124,30 @@ export default function Accomplishments() {
     [records, month],
   )
 
-  const reportRecords = useMemo(
-    () => [...monthRecords].sort((a, b) => {
+  const unsavedAccomplishment = useMemo(() => {
+    const accomplishment = String(form?.accomplishment ?? '').trim()
+    const dateKey = String(form?.dateKey ?? '')
+    if (!showForm || !accomplishment || !dateKey.startsWith(month)) return null
+
+    return {
+      id: editingId || 'unsaved-accomplishment',
+      dateKey,
+      accomplishment,
+      accomplishmentHtml: form?.accomplishmentHtml || plainTextToHtml(accomplishment),
+      remarks: String(form?.remarks ?? '').trim(),
+    }
+  }, [editingId, form, month, showForm])
+
+  const reportRecords = useMemo(() => {
+    const next = monthRecords.filter(record => !unsavedAccomplishment || record.id !== editingId)
+    if (unsavedAccomplishment) next.push(unsavedAccomplishment)
+    return next.sort((a, b) => {
       if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey)
       const aTime = a.createdAt?.toMillis?.() || 0
       const bTime = b.createdAt?.toMillis?.() || 0
       return aTime - bTime
-    }),
-    [monthRecords],
-  )
+    })
+  }, [editingId, monthRecords, unsavedAccomplishment])
 
   function startCreate() {
     setEditingId(null)
@@ -242,7 +257,7 @@ export default function Accomplishments() {
   }
 
   async function downloadMonthlyReport() {
-    if (monthRecords.length === 0) {
+    if (reportRecords.length === 0) {
       setMessageType('error')
       setMessage(`There are no accomplishments to download for ${monthLabel(month)}.`)
       return
@@ -258,7 +273,9 @@ export default function Accomplishments() {
         monthLabel: monthLabel(month),
       })
       setMessageType('success')
-      setMessage(`Microsoft Word report downloaded for ${monthLabel(month)}.`)
+      setMessage(
+        `Microsoft Word report downloaded for ${monthLabel(month)}.${unsavedAccomplishment ? ' The unsaved accomplishment input was included.' : ''}`
+      )
     } catch (error) {
       console.error('Word report generation failed:', error)
       setMessageType('error')

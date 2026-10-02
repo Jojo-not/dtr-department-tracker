@@ -180,6 +180,8 @@ The plain-text version is still stored in `accomplishment` for backward compatib
 
 The previous browser print action is replaced by **Download Word Report**. The app generates a `.docx` file directly in the browser using the `docx` package. The Word report keeps the formal Individual Daily Log and Accomplishment Report layout, including employee name, position, office/department, Date/s Covered, DTR time logs, formatted accomplishments, remarks, and Submitted by / Attested by signature areas.
 
+If the accomplishment form is open when downloading, its non-empty entry for the selected month is included in the report even if it has not been saved yet. Editing an existing entry exports the current editor contents instead of duplicating the saved version.
+
 After installing this update, install the new dependency and republish Firestore rules:
 
 ```bash
