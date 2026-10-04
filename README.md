@@ -153,6 +153,20 @@ firebase deploy --only firestore:rules
 
 The Accomplishment Report now automatically matches each accomplishment date with the employee's attendance record for the same day. The monthly list and downloadable Word report show **AM Time In, Lunch Time Out, PM Time In, Final Time Out, and total worked time**. These values are read from the existing `attendance` collection, so employees do not type their attendance times manually.
 
+## Department admin
+
+The `/admin` page is available only to users whose `users/{uid}` profile has `role: "admin"`. To grant access, an authorized operator must update that user's role in the Firebase Console; public registration always creates employee accounts. Admins can edit existing time logs and view accomplishment reports for employees in their own department. Admin edits are recorded with `lastAdminEditAt` and `lastAdminEditBy`.
+
+Publish the repository's Firestore rules to enforce department-scoped reads and admin-only time-log edits:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+## Profile settings
+
+Employees can update their name, employee ID, and position from the **Profile** page. Changes require confirmation before saving. Email address, department, and role are read-only in the app; the Firestore rules prevent self-service changes to those fields. Publish the latest `firestore.rules` for profile updates to work.
+
 ## Formal Accomplishment Report Word layout
 The downloaded Microsoft Word report follows the provided formal Individual Daily Log and Accomplishment Report reference:
 - A4 portrait layout using Times New Roman

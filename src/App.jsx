@@ -8,8 +8,12 @@ import Login from './pages/Login'
 import MyLogs from './pages/MyLogs'
 import Register from './pages/Register'
 import Accomplishments from './pages/Accomplishments'
+import Admin from './pages/Admin'
+import Profile from './pages/Profile'
 
-function PrivatePage({ children }) { return <ProtectedRoute><AppShell>{children}</AppShell></ProtectedRoute> }
+function PrivatePage({ children, adminOnly = false }) {
+  return <ProtectedRoute adminOnly={adminOnly}><AppShell>{children}</AppShell></ProtectedRoute>
+}
 
 export default function App() {
   return <Routes>
@@ -20,6 +24,8 @@ export default function App() {
     <Route path="/department" element={<PrivatePage><Department/></PrivatePage>}/>
     <Route path="/my-logs" element={<PrivatePage><MyLogs/></PrivatePage>}/>
     <Route path="/accomplishments" element={<PrivatePage><Accomplishments/></PrivatePage>}/>
+    <Route path="/profile" element={<PrivatePage><Profile/></PrivatePage>}/>
+    <Route path="/admin" element={<PrivatePage adminOnly><Admin/></PrivatePage>}/>
     <Route path="*" element={<Navigate to="/" replace/>}/>
   </Routes>
 }

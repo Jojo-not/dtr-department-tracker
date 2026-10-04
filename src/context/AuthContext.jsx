@@ -7,7 +7,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
 const AuthContext = createContext(null)
@@ -52,9 +52,30 @@ export function AuthProvider({ children }) {
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password)
   const resetPassword = (email) => sendPasswordResetEmail(auth, String(email ?? '').trim().toLowerCase())
   const logout = () => signOut(auth)
+  const updateMyProfile = async (values) => {
+    if (!user?.uid) throw new Error('You must be signed in to update your profile.')
+
+    const updates = {
+      name: String(values?.name ?? '').trim(),
+      employeeId: String(values?.employeeId ?? '').trim(),
+      position: String(values?.position ?? '').trim(),
+    }
+    if (!updates.name || !updates.employeeId || !updates.position) {
+      throw new Error('Name, employee ID, and position are required.')
+    }
+    if (updates.name.length > 100 || updates.employeeId.length > 50 || updates.position.length > 100) {
+      throw new Error('One or more profile fields exceed the allowed length.')
+    }
+
+    await updateDoc(doc(db, 'users', user.uid), {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    })
+    setProfile(current => ({ ...current, ...updates }))
+  }
 
   const value = useMemo(
-    () => ({ user, profile, loading, login, register, resetPassword, logout }),
+    () => ({ user, profile, loading, login, register, resetPassword, logout, updateMyProfile }),
     [user, profile, loading]
   )
 

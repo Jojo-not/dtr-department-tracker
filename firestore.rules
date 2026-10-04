@@ -1,0 +1,206 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profileExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isDepartmentMember(department) {
+      return profileExists() && profile().department == department;
+    }
+
+    function isDepartmentAdmin(department) {
+      return profileExists()
+        && profile().role == 'admin'
+        && profile().department == department;
+    }
+
+    function validOptionalTimestamp(value) {
+      return value == null || value is timestamp;
+    }
+
+    match /users/{uid} {
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'employee'
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.department is string
+        && request.resource.data.createdAt == request.time;
+
+      allow read: if signedIn()
+        && (request.auth.uid == uid || isDepartmentMember(resource.data.department));
+
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'employeeId', 'position', 'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.employeeId is string
+        && request.resource.data.employeeId.size() > 0
+        && request.resource.data.employeeId.size() <= 50
+        && request.resource.data.position is string
+        && request.resource.data.position.size() > 0
+        && request.resource.data.position.size() <= 100
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid
+          || isDepartmentMember(resource.data.department));
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && attendanceId == request.auth.uid + '_' + request.resource.data.dateKey
+        && profileExists()
+        && request.resource.data.department == profile().department
+        && request.resource.data.dateKey is string
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            request.resource.data.status == 'IN'
+            && request.resource.data.timeIn1 == request.time
+            && request.resource.data.timeOut1 == null
+            && request.resource.data.timeIn2 == null
+            && request.resource.data.timeOut2 == null
+          )
+          || (
+            request.resource.data.status in ['LEAVE', 'TRAVEL']
+            && request.resource.data.timeIn1 == null
+            && request.resource.data.timeOut1 == null
+            && request.resource.data.timeIn2 == null
+            && request.resource.data.timeOut2 == null
+            && request.resource.data.statusSetAt == request.time
+          )
+        );
+
+      allow update: if signedIn() && (
+        (
+          isDepartmentAdmin(resource.data.department)
+          && !(resource.data.status in ['LEAVE', 'TRAVEL'])
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.department == resource.data.department
+          && request.resource.data.dateKey == resource.data.dateKey
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'timeIn1', 'timeOut1', 'timeIn2', 'timeOut2',
+            'timeIn', 'timeOut', 'status', 'updatedAt',
+            'lastAdminEditAt', 'lastAdminEditBy'
+          ])
+          && request.resource.data.status in ['IN', 'BREAK', 'OUT']
+          && validOptionalTimestamp(request.resource.data.timeIn1)
+          && validOptionalTimestamp(request.resource.data.timeOut1)
+          && validOptionalTimestamp(request.resource.data.timeIn2)
+          && validOptionalTimestamp(request.resource.data.timeOut2)
+          && validOptionalTimestamp(request.resource.data.timeIn)
+          && validOptionalTimestamp(request.resource.data.timeOut)
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.lastAdminEditAt == request.time
+          && request.resource.data.lastAdminEditBy == request.auth.uid
+        )
+        || (
+          resource.data.uid == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.department == resource.data.department
+          && request.resource.data.dateKey == resource.data.dateKey
+          && request.resource.data.updatedAt == request.time
+          && (
+            (
+              resource.data.status == 'IN'
+              && resource.data.timeIn1 is timestamp
+              && resource.data.timeOut1 == null
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'timeOut1', 'status', 'updatedAt'
+              ])
+              && request.resource.data.timeOut1 == request.time
+              && request.resource.data.status == 'BREAK'
+            )
+            || (
+              resource.data.status == 'BREAK'
+              && resource.data.timeOut1 is timestamp
+              && resource.data.timeIn2 == null
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'timeIn2', 'status', 'updatedAt'
+              ])
+              && request.resource.data.timeIn2 == request.time
+              && request.resource.data.status == 'IN'
+            )
+            || (
+              resource.data.status == 'IN'
+              && resource.data.timeIn2 is timestamp
+              && resource.data.timeOut2 == null
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'timeOut2', 'status', 'updatedAt'
+              ])
+              && request.resource.data.timeOut2 == request.time
+              && request.resource.data.status == 'OUT'
+            )
+            || (
+              !('timeIn1' in resource.data)
+              && resource.data.status == 'IN'
+              && resource.data.timeIn is timestamp
+              && resource.data.timeOut == null
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'timeOut', 'status', 'updatedAt'
+              ])
+              && request.resource.data.timeOut == request.time
+              && request.resource.data.status == 'OUT'
+            )
+          )
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    match /accomplishments/{accomplishmentId} {
+      allow read: if signedIn()
+        && (resource.data.uid == request.auth.uid
+          || isDepartmentAdmin(resource.data.department));
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && profileExists()
+        && request.resource.data.department == profile().department
+        && request.resource.data.dateKey is string
+        && request.resource.data.accomplishment is string
+        && request.resource.data.accomplishmentHtml is string
+        && request.resource.data.remarks is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'dateKey', 'accomplishment', 'accomplishmentHtml', 'remarks', 'updatedAt'
+        ])
+        && request.resource.data.dateKey is string
+        && request.resource.data.accomplishment is string
+        && request.resource.data.accomplishmentHtml is string
+        && request.resource.data.remarks is string
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

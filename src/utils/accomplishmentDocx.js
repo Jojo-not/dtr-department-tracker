@@ -325,7 +325,7 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
         signatureCell(
           'Attested by:',
           profile?.supervisorName || 'IMMEDIATE SUPERVISOR',
-          profile?.supervisorPosition || 'Supervisor / Head of Office',
+          profile?.supervisorPosition || 'PROJECT DEVELOPMENT OFFICER V',
           profile?.office || profile?.department || '',
         ),
       ],

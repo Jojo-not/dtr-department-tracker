@@ -31,6 +31,25 @@ export function subscribeMyAccomplishments(uid, onData, onError) {
   )
 }
 
+export function subscribeDepartmentAccomplishments(department, onData, onError) {
+  const q = query(collection(db, 'accomplishments'), where('department', '==', department))
+  return onSnapshot(
+    q,
+    snapshot => {
+      const records = snapshot.docs
+        .map(item => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => {
+          if (a.dateKey !== b.dateKey) return b.dateKey.localeCompare(a.dateKey)
+          const aTime = a.createdAt?.toMillis?.() || 0
+          const bTime = b.createdAt?.toMillis?.() || 0
+          return bTime - aTime
+        })
+      onData(records)
+    },
+    onError,
+  )
+}
+
 export async function createAccomplishment(user, profile, values) {
   return addDoc(collection(db, 'accomplishments'), {
     uid: user.uid,

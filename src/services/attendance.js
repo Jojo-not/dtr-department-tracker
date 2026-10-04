@@ -156,6 +156,51 @@ export async function timeOut(user, currentRecord) {
   )
 }
 
+export async function updateAttendanceAsAdmin(user, record, values) {
+  if (!record?.id || !record.uid || !record.department) {
+    throw new Error('The attendance record is incomplete and cannot be edited.')
+  }
+
+  const fields = ['timeIn1', 'timeOut1', 'timeIn2', 'timeOut2']
+  const times = Object.fromEntries(fields.map(field => {
+    const value = values?.[field]
+    return [field, value ? new Date(value) : null]
+  }))
+
+  if (Object.values(times).some(value => value && Number.isNaN(value.getTime()))) {
+    throw new Error('Enter valid date and time values.')
+  }
+  if (!times.timeIn1) {
+    throw new Error('AM Time In is required. To remove this attendance record, contact your system administrator.')
+  }
+  if ((times.timeOut1 && times.timeOut1 <= times.timeIn1)
+    || (times.timeIn2 && (!times.timeOut1 || times.timeIn2 <= times.timeOut1))
+    || (times.timeOut2 && (!times.timeIn2 || times.timeOut2 <= times.timeIn2))) {
+    throw new Error('Time logs must be entered in chronological order.')
+  }
+  if (Object.values(times).some(value => value && getLocalDateKey(value) !== record.dateKey)) {
+    throw new Error('All time logs must be on the attendance date.')
+  }
+
+  const status = times.timeOut2
+    ? 'OUT'
+    : times.timeIn2
+      ? 'IN'
+      : times.timeOut1
+        ? 'BREAK'
+        : 'IN'
+
+  await updateDoc(doc(db, 'attendance', record.id), {
+    ...times,
+    timeIn: null,
+    timeOut: null,
+    status,
+    updatedAt: serverTimestamp(),
+    lastAdminEditAt: serverTimestamp(),
+    lastAdminEditBy: user.uid,
+  })
+}
+
 export function subscribeAttendanceByDate(department, dateKey, callback, onError) {
   const q = query(
     collection(db, 'attendance'),
@@ -165,6 +210,22 @@ export function subscribeAttendanceByDate(department, dateKey, callback, onError
   return onSnapshot(
     q,
     (snap) => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    onError,
+  )
+}
+
+export function subscribeDepartmentAttendance(department, callback, onError) {
+  const q = query(
+    collection(db, 'attendance'),
+    where('department', '==', department),
+  )
+  return onSnapshot(
+    q,
+    snapshot => callback(
+      snapshot.docs
+        .map(item => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => (b.dateKey || '').localeCompare(a.dateKey || '')),
+    ),
     onError,
   )
 }

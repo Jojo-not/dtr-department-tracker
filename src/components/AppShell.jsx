@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, Clock3, LogOut, Menu, Users, X } from 'lucide-react'
+import { BarChart3, ClipboardCheck, Clock3, LogOut, Menu, ShieldCheck, UserRound, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -9,6 +9,7 @@ const links = [
   { to: '/department', label: 'Department', icon: Users },
   { to: '/my-logs', label: 'My Logs', icon: Clock3 },
   { to: '/accomplishments', label: 'Accomplishments', icon: ClipboardCheck },
+  { to: '/profile', label: 'Profile', icon: UserRound },
 ]
 
 export default function AppShell({ children }) {
@@ -18,7 +19,7 @@ export default function AppShell({ children }) {
   const Sidebar = () => <div className="flex h-full flex-col">
     <div className="px-5 py-6"><Logo /></div>
     <nav className="space-y-1 px-3">
-      {links.map(({ to, label, icon: Icon }) => (
+      {[...links, ...(profile?.role === 'admin' ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }] : [])].map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)} className={({ isActive }) =>
           `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${isActive ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'}`
         }>

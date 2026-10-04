@@ -14,6 +14,7 @@ import { subscribeMyAccomplishments } from '../services/accomplishments'
 import { attendanceMinutes, attendanceTimes, formatTime, getLocalDateKey, humanDuration } from '../utils/date'
 import StatusBadge from '../components/StatusBadge'
 import DayStatusModal from '../components/DayStatusModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function Dashboard() {
   const { user, profile } = useAuth()
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('success')
   const [pendingAwayStatus, setPendingAwayStatus] = useState(null)
+  const [pendingTimeAction, setPendingTimeAction] = useState(null)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -148,6 +150,17 @@ export default function Dashboard() {
     }
   }
 
+  function requestTimeLog(type) {
+    if (busy || (type === 'in' && !canTimeIn) || (type === 'out' && !canTimeOut)) return
+    setPendingTimeAction(type)
+  }
+
+  async function confirmTimeLog() {
+    if (!pendingTimeAction) return
+    await act(pendingTimeAction)
+    setPendingTimeAction(null)
+  }
+
   function requestAwayStatus(status) {
     if (!canMarkAway || busy) return
     setPendingAwayStatus(status)
@@ -189,6 +202,16 @@ export default function Dashboard() {
         busy={busy}
         onCancel={() => !busy && setPendingAwayStatus(null)}
         onConfirm={confirmAwayStatus}
+      />
+      <ConfirmDialog
+        open={pendingTimeAction !== null}
+        title={`Record ${pendingTimeAction === 'in' ? timeInLabel : timeOutLabel}?`}
+        description="This will save your attendance using the current time."
+        confirmLabel="Record time"
+        busy={busy}
+        variant="warning"
+        onCancel={() => !busy && setPendingTimeAction(null)}
+        onConfirm={confirmTimeLog}
       />
       <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
@@ -273,14 +296,14 @@ export default function Dashboard() {
           <div className="mt-6 grid grid-cols-2 gap-3">
             <button
               disabled={busy || !canTimeIn}
-              onClick={() => act('in')}
+              onClick={() => requestTimeLog('in')}
               className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <LogIn size={17} /> {timeInLabel}
             </button>
             <button
               disabled={busy || !canTimeOut}
-              onClick={() => act('out')}
+              onClick={() => requestTimeLog('out')}
               className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-35"
             >
               <LogOut size={17} /> {timeOutLabel}
