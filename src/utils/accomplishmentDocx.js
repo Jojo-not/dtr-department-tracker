@@ -46,7 +46,8 @@ function wordTime(timestamp) {
 function shortDate(dateKey) {
   if (!dateKey) return '—'
   const [year, month, day] = dateKey.split('-').map(Number)
-  return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${String(year).slice(-2)}`
+  return new Intl.DateTimeFormat('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+    .format(new Date(year, month - 1, day))
 }
 
 function coverageLabel(records) {
@@ -323,8 +324,8 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
       children: [
         signatureCell('Submitted by:', profile?.name || 'Employee', profile?.position || 'Employee'),
         signatureCell(
-          'Attested by:',
-          profile?.supervisorName || 'IMMEDIATE SUPERVISOR',
+          'Approved by:',
+          profile?.supervisorName || 'Cecille A. Anyayahan',
           profile?.supervisorPosition || 'PROJECT DEVELOPMENT OFFICER V',
           profile?.office || profile?.department || '',
         ),
