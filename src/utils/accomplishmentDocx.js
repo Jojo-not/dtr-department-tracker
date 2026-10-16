@@ -304,9 +304,9 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
     margins: { top: 0, bottom: 0, left: 60, right: 60 },
     children: [
       new Paragraph({ spacing: { after: 360 }, children: [run(heading)] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [run(name || '—', { bold: true })], spacing: { after: 20 } }),
-      new Paragraph({ alignment: AlignmentType.CENTER, children: [run(position || '—')], spacing: { after: 20 } }),
-      ...(office ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [run(office)], spacing: { after: 0 } })] : []),
+      new Paragraph({ alignment: AlignmentType.LEFT, children: [run(name || '—', { bold: true })], spacing: { after: 20 } }),
+      new Paragraph({ alignment: AlignmentType.LEFT, children: [run(position || '—')], spacing: { after: 20 } }),
+      ...(office ? [new Paragraph({ alignment: AlignmentType.LEFT, children: [run(office)], spacing: { after: 0 } })] : []),
     ],
   })
 
@@ -317,12 +317,11 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
     rows: [new TableRow({
       cantSplit: true,
       children: [
-        signatureCell('Submitted by:', profile?.name || 'Employee', profile?.position || 'Employee'),
+        signatureCell('Submitted by:', (profile?.name || 'Employee').toUpperCase(), profile?.position || 'Employee'),
         signatureCell(
           'Approved by:',
-          profile?.supervisorName || 'Cecille A. Anyayahan',
-          profile?.supervisorPosition || 'PROJECT DEVELOPMENT OFFICER V',
-          profile?.office || profile?.department || '',
+          profile?.supervisorName || 'CECILLE A. ANYAYAHAN',
+          profile?.supervisorPosition || 'Project Development Officer V'
         ),
       ],
     })],

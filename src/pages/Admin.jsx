@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Clock3,
@@ -26,6 +27,10 @@ const timeFields = [
   ['timeIn2', 'PM Time In'],
   ['timeOut2', 'Final Time Out'],
 ]
+
+const attendancePageSize = 5
+const employeePageSize = 9
+const accomplishmentPageSize = 4
 
 function toLocalDateTimeInput(value) {
   if (!value) return ''
@@ -59,6 +64,9 @@ export default function Admin() {
   const [accomplishments, setAccomplishments] = useState([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState('all')
+  const [attendancePage, setAttendancePage] = useState(1)
+  const [employeePage, setEmployeePage] = useState(1)
+  const [accomplishmentPage, setAccomplishmentPage] = useState(1)
   const [month, setMonth] = useState('')
   const [search, setSearch] = useState('')
   const [editingRecord, setEditingRecord] = useState(null)
@@ -116,19 +124,65 @@ export default function Admin() {
     return matchesDate && matchesSearch
   }), [attendance, search, selectedDate])
 
+  const attendancePageCount = Math.ceil(filteredAttendance.length / attendancePageSize)
+  const currentAttendancePage = Math.min(attendancePage, Math.max(1, attendancePageCount))
+  const paginatedAttendance = filteredAttendance.slice(
+    (currentAttendancePage - 1) * attendancePageSize,
+    currentAttendancePage * attendancePageSize,
+  )
+
+  useEffect(() => {
+    setAttendancePage(1)
+  }, [search, selectedDate])
+
+  useEffect(() => {
+    if (attendancePage > attendancePageCount) {
+      setAttendancePage(Math.max(1, attendancePageCount))
+    }
+  }, [attendancePage, attendancePageCount])
+
   const filteredAccomplishments = useMemo(() => accomplishments.filter(record => {
     const matchesEmployee = selectedEmployee === 'all' || record.uid === selectedEmployee
     const matchesMonth = !month || record.dateKey?.startsWith(month)
     return matchesEmployee && matchesMonth
   }), [accomplishments, month, selectedEmployee])
 
+  const accomplishmentPageCount = Math.ceil(filteredAccomplishments.length / accomplishmentPageSize)
+  const currentAccomplishmentPage = Math.min(accomplishmentPage, Math.max(1, accomplishmentPageCount))
+  const paginatedAccomplishments = filteredAccomplishments.slice(
+    (currentAccomplishmentPage - 1) * accomplishmentPageSize,
+    currentAccomplishmentPage * accomplishmentPageSize,
+  )
+
+  useEffect(() => {
+    setAccomplishmentPage(1)
+  }, [month, selectedEmployee])
+
+  useEffect(() => {
+    if (accomplishmentPage > accomplishmentPageCount) {
+      setAccomplishmentPage(Math.max(1, accomplishmentPageCount))
+    }
+  }, [accomplishmentPage, accomplishmentPageCount])
+
   const orderedPeople = useMemo(
     () => [...people].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [people],
   )
+  const employeePageCount = Math.ceil(orderedPeople.length / employeePageSize)
+  const currentEmployeePage = Math.min(employeePage, Math.max(1, employeePageCount))
+  const paginatedPeople = orderedPeople.slice(
+    (currentEmployeePage - 1) * employeePageSize,
+    currentEmployeePage * employeePageSize,
+  )
   const selectedPerson = people.find(person => person.id === selectedEmployee)
   const reportCountForPerson = uid => accomplishments.filter(record =>
     record.uid === uid && (!month || record.dateKey?.startsWith(month))).length
+
+  useEffect(() => {
+    if (employeePage > employeePageCount) {
+      setEmployeePage(Math.max(1, employeePageCount))
+    }
+  }, [employeePage, employeePageCount])
 
   const activeCount = filteredAttendance.filter(record => ['IN', 'BREAK'].includes(record.status)).length
   const completedCount = filteredAttendance.filter(record => record.status === 'OUT').length
@@ -339,7 +393,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAttendance.map(record => {
+                {paginatedAttendance.map(record => {
                   const person = people.find(item => item.id === record.uid)
                   const times = attendanceTimes(record)
                   const away = ['LEAVE', 'TRAVEL'].includes(record.status)
@@ -387,6 +441,38 @@ export default function Admin() {
               </div>
             )}
         </div>
+        {attendancePageCount > 1 && (
+          <nav
+            aria-label="Department time log pages"
+            className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          >
+            <p className="text-sm text-slate-500">
+              Showing {(currentAttendancePage - 1) * attendancePageSize + 1}–
+              {Math.min(currentAttendancePage * attendancePageSize, filteredAttendance.length)} of {filteredAttendance.length} logs
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAttendancePage(currentAttendancePage - 1)}
+                disabled={currentAttendancePage === 1}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
+                Page {currentAttendancePage} of {attendancePageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAttendancePage(currentAttendancePage + 1)}
+                disabled={currentAttendancePage === attendancePageCount}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+          </nav>
+        )}
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.025]">
@@ -436,7 +522,7 @@ export default function Admin() {
             </div>
             {orderedPeople.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {orderedPeople.map(person => {
+                {paginatedPeople.map(person => {
                   const reportCount = reportCountForPerson(person.id)
                   return (
                     <button
@@ -465,6 +551,38 @@ export default function Admin() {
                 No department employees found.
               </div>
             )}
+            {employeePageCount > 1 && (
+              <nav
+                aria-label="Department employee pages"
+                className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-sm text-slate-500">
+                  Showing {(currentEmployeePage - 1) * employeePageSize + 1}–
+                  {Math.min(currentEmployeePage * employeePageSize, orderedPeople.length)} of {orderedPeople.length} employees
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEmployeePage(currentEmployeePage - 1)}
+                    disabled={currentEmployeePage === 1}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ChevronLeft size={16} /> Previous
+                  </button>
+                  <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
+                    Page {currentEmployeePage} of {employeePageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEmployeePage(currentEmployeePage + 1)}
+                    disabled={currentEmployeePage === employeePageCount}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next <ChevronRight size={16} />
+                  </button>
+                </div>
+              </nav>
+            )}
           </div>
         ) : (
           <>
@@ -472,7 +590,10 @@ export default function Admin() {
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedEmployee('all')}
+                  onClick={() => {
+                    setSelectedEmployee('all')
+                    setEmployeePage(1)
+                  }}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                 >
                   <ArrowLeft size={16} /> All employees
@@ -486,7 +607,7 @@ export default function Admin() {
               </div>
             </div>
             <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-2">
-              {filteredAccomplishments.map(record => (
+              {paginatedAccomplishments.map(record => (
                 <article key={record.id} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm">
                   <div className="flex items-start gap-3">
                     <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-sm font-bold text-blue-700">
@@ -526,6 +647,38 @@ export default function Admin() {
                 </div>
               )}
             </div>
+            {accomplishmentPageCount > 1 && (
+              <nav
+                aria-label="Department accomplishment pages"
+                className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+              >
+                <p className="text-sm text-slate-500">
+                  Showing {(currentAccomplishmentPage - 1) * accomplishmentPageSize + 1}–
+                  {Math.min(currentAccomplishmentPage * accomplishmentPageSize, filteredAccomplishments.length)} of {filteredAccomplishments.length} reports
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAccomplishmentPage(currentAccomplishmentPage - 1)}
+                    disabled={currentAccomplishmentPage === 1}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ChevronLeft size={16} /> Previous
+                  </button>
+                  <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
+                    Page {currentAccomplishmentPage} of {accomplishmentPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAccomplishmentPage(currentAccomplishmentPage + 1)}
+                    disabled={currentAccomplishmentPage === accomplishmentPageCount}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next <ChevronRight size={16} />
+                  </button>
+                </div>
+              </nav>
+            )}
           </>
         )}
       </section>
