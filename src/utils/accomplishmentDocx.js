@@ -50,23 +50,17 @@ function shortDate(dateKey) {
     .format(new Date(year, month - 1, day))
 }
 
-function coverageLabel(records) {
-  const keys = records.map(record => record.dateKey).filter(Boolean).sort()
-  if (!keys.length) return '—'
-  const toDate = key => {
-    const [year, month, day] = key.split('-').map(Number)
-    return new Date(year, month - 1, day)
-  }
-  const first = toDate(keys[0])
-  const last = toDate(keys[keys.length - 1])
-  const full = date => new Intl.DateTimeFormat('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }).format(date)
+function coverageLabel(monthKey) {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey || '')
+  if (!match) return '—'
 
-  if (keys[0] === keys[keys.length - 1]) return full(first)
-  if (first.getFullYear() === last.getFullYear() && first.getMonth() === last.getMonth()) {
-    const monthName = new Intl.DateTimeFormat('en-PH', { month: 'long' }).format(first)
-    return `${monthName} ${first.getDate()} to ${last.getDate()}, ${last.getFullYear()}`
-  }
-  return `${full(first)} to ${full(last)}`
+  const year = Number(match[1])
+  const month = Number(match[2])
+  if (month < 1 || month > 12) return '—'
+
+  const monthName = new Intl.DateTimeFormat('en-PH', { month: 'long' }).format(new Date(year, month - 1, 1))
+  const lastDay = new Date(year, month, 0).getDate()
+  return `${monthName} 1 to ${lastDay}, ${year}`
 }
 
 function alignmentFromElement(element) {
@@ -200,7 +194,7 @@ function reportFilename(profile, monthLabel) {
   return `Individual_Daily_Log_Accomplishment_${name}.docx`
 }
 
-export async function downloadAccomplishmentReportDocx({ profile, records, attendanceByDate, monthLabel }) {
+export async function downloadAccomplishmentReportDocx({ profile, records, attendanceByDate, monthKey, monthLabel }) {
   const sorted = [...records].sort((a, b) => {
     if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey)
     return (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0)
@@ -215,7 +209,7 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 360 },
-      children: [run('(WORK FROM HOME)', { bold: true, size: 22 })],
+      children: [run('(WORK FROM HOME-Friday)', { bold: true, size: 22 })],
     }),
   ]
 
@@ -226,13 +220,14 @@ export async function downloadAccomplishmentReportDocx({ profile, records, atten
     rows: [
       detailRow('NAME', profile?.name || '—'),
       detailRow('POSITION', profile?.position || '—'),
-      detailRow('OFFICE', profile?.office || profile?.department || '—'),
+      detailRow('DIVISION', 'Human Resource Development Division'),
+      detailRow('Bureau/Service', 'Bureau of Human Resource and Organizational Development'),
     ],
   })
 
   const coverage = new Paragraph({
     spacing: { before: 180, after: 180 },
-    children: [run('Date/s Covered: ', { bold: true }), run(coverageLabel(sorted))],
+    children: [run('Date/s Covered: ', { bold: true }), run(coverageLabel(monthKey))],
   })
 
   const headerRow = new TableRow({

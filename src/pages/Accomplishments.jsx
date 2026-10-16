@@ -270,6 +270,7 @@ export default function Accomplishments() {
         profile,
         records: reportRecords,
         attendanceByDate,
+        monthKey: month,
         monthLabel: monthLabel(month),
       })
       setMessageType('success')

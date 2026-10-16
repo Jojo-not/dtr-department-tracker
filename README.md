@@ -171,7 +171,7 @@ Employees can update their name, employee ID, and position from the **Profile** 
 The downloaded Microsoft Word report follows the provided formal Individual Daily Log and Accomplishment Report reference:
 - A4 portrait layout using Times New Roman
 - centered `INDIVIDUAL DAILY LOG AND ACCOMPLISHMENT REPORT (WORK FROM HOME)` heading
-- Name, Position, Office, and automatically calculated Date/s Covered
+- Name, Position, Division, Bureau/Service, and full-month Date/s Covered
 - two-column table: `Date and Actual Time logs` and `Actual Accomplishments`
 - automatic AM time-in, lunch time-out, PM time-in, and final time-out from DTR records
 - accomplishment formatting preserved from the Word-style editor, including bullets, numbering, emphasis, headings, and alignment
@@ -192,7 +192,7 @@ The Accomplishment Report module now uses a Word-style rich-text editor instead 
 
 The plain-text version is still stored in `accomplishment` for backward compatibility and list/search use. New and edited records also store sanitized rich text in `accomplishmentHtml`. Existing accomplishment records that do not have `accomplishmentHtml` continue to work and are automatically converted to simple paragraphs when edited or exported.
 
-The previous browser print action is replaced by **Download Word Report**. The app generates a `.docx` file directly in the browser using the `docx` package. The Word report keeps the formal Individual Daily Log and Accomplishment Report layout, including employee name, position, office/department, Date/s Covered, DTR time logs, formatted accomplishments, remarks, and Submitted by / Attested by signature areas.
+The previous browser print action is replaced by **Download Word Report**. The app generates a `.docx` file directly in the browser using the `docx` package. The Word report keeps the formal Individual Daily Log and Accomplishment Report layout, including employee name, position, Division, Bureau/Service, the full selected-month Date/s Covered range, DTR time logs, formatted accomplishments, remarks, and Submitted by / Attested by signature areas.
 
 If the accomplishment form is open when downloading, its non-empty entry for the selected month is included in the report even if it has not been saved yet. Editing an existing entry exports the current editor contents instead of duplicating the saved version.
 
