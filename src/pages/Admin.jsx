@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -29,7 +28,6 @@ const timeFields = [
 ]
 
 const attendancePageSize = 5
-const employeePageSize = 9
 const accomplishmentPageSize = 4
 
 function toLocalDateTimeInput(value) {
@@ -65,9 +63,8 @@ export default function Admin() {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState('all')
   const [attendancePage, setAttendancePage] = useState(1)
-  const [employeePage, setEmployeePage] = useState(1)
   const [accomplishmentPage, setAccomplishmentPage] = useState(1)
-  const [month, setMonth] = useState('')
+  const [month, setMonth] = useState(() => getLocalDateKey().slice(0, 7))
   const [search, setSearch] = useState('')
   const [editingRecord, setEditingRecord] = useState(null)
   const [form, setForm] = useState({})
@@ -168,21 +165,7 @@ export default function Admin() {
     () => [...people].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [people],
   )
-  const employeePageCount = Math.ceil(orderedPeople.length / employeePageSize)
-  const currentEmployeePage = Math.min(employeePage, Math.max(1, employeePageCount))
-  const paginatedPeople = orderedPeople.slice(
-    (currentEmployeePage - 1) * employeePageSize,
-    currentEmployeePage * employeePageSize,
-  )
   const selectedPerson = people.find(person => person.id === selectedEmployee)
-  const reportCountForPerson = uid => accomplishments.filter(record =>
-    record.uid === uid && (!month || record.dateKey?.startsWith(month))).length
-
-  useEffect(() => {
-    if (employeePage > employeePageCount) {
-      setEmployeePage(Math.max(1, employeePageCount))
-    }
-  }, [employeePage, employeePageCount])
 
   const activeCount = filteredAttendance.filter(record => ['IN', 'BREAK'].includes(record.status)).length
   const completedCount = filteredAttendance.filter(record => record.status === 'OUT').length
@@ -484,13 +467,24 @@ export default function Admin() {
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-slate-950">Department accomplishments</h2>
               <p className="mt-1 text-sm text-slate-500">
-                {selectedPerson
-                  ? `Monthly reports for ${selectedPerson.name}.`
-                  : 'Choose an employee to view their reports for the selected month.'}
+                Browse department reports by month or employee.
               </p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <label>
+              <span className="sr-only">Filter accomplishments by employee</span>
+              <select
+                value={selectedEmployee}
+                onChange={event => setSelectedEmployee(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 sm:w-52"
+              >
+                <option value="all">All employees</option>
+                {orderedPeople.map(person => (
+                  <option key={person.id} value={person.id}>{person.name || person.email || 'Employee'}</option>
+                ))}
+              </select>
+            </label>
             <label>
               <span className="sr-only">Filter accomplishments by month</span>
               <input
@@ -512,174 +506,90 @@ export default function Admin() {
           </div>
         </div>
 
-        {selectedEmployee === 'all' ? (
-          <div className="p-5 sm:p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-700">Department employees</p>
-              <span className="text-xs text-slate-500">
-                {month ? `Reports for ${month}` : 'Reports for all dates'}
-              </span>
-            </div>
-            {orderedPeople.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {paginatedPeople.map(person => {
-                  const reportCount = reportCountForPerson(person.id)
-                  return (
-                    <button
-                      key={person.id}
-                      type="button"
-                      onClick={() => setSelectedEmployee(person.id)}
-                      className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                    >
-                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700 transition group-hover:bg-blue-100 group-hover:text-blue-700">
-                        {(person.name || 'E').slice(0, 1).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-slate-900">{person.name || 'Employee'}</span>
-                        <span className="mt-0.5 block truncate text-xs text-slate-500">{person.employeeId || person.email}</span>
-                        <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${reportCount ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {reportCount} {reportCount === 1 ? 'report' : 'reports'}
-                        </span>
-                      </span>
-                      <ChevronRight size={18} className="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600" />
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-                No department employees found.
-              </div>
-            )}
-            {employeePageCount > 1 && (
-              <nav
-                aria-label="Department employee pages"
-                className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="text-sm text-slate-500">
-                  Showing {(currentEmployeePage - 1) * employeePageSize + 1}–
-                  {Math.min(currentEmployeePage * employeePageSize, orderedPeople.length)} of {orderedPeople.length} employees
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEmployeePage(currentEmployeePage - 1)}
-                    disabled={currentEmployeePage === 1}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={16} /> Previous
-                  </button>
-                  <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
-                    Page {currentEmployeePage} of {employeePageCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setEmployeePage(currentEmployeePage + 1)}
-                    disabled={currentEmployeePage === employeePageCount}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Next <ChevronRight size={16} />
-                  </button>
-                </div>
-              </nav>
-            )}
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {selectedPerson?.name || 'All department employees'}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {month ? `Reports for ${month}` : 'Reports for all dates'} · {filteredAccomplishments.length} {filteredAccomplishments.length === 1 ? 'report' : 'reports'}
+            </p>
           </div>
-        ) : (
-          <>
-            <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedEmployee('all')
-                    setEmployeePage(1)
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  <ArrowLeft size={16} /> All employees
-                </button>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900">{selectedPerson?.name || 'Employee accomplishments'}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {month ? `Reports for ${month}` : 'Reports for all dates'} · {filteredAccomplishments.length} {filteredAccomplishments.length === 1 ? 'report' : 'reports'}
-                  </p>
+        </div>
+        <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-2">
+          {paginatedAccomplishments.map(record => (
+            <article key={record.id} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-sm font-bold text-blue-700">
+                  {(record.name || 'E').slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold text-slate-900">{record.name || 'Employee'}</h3>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{record.employeeId || record.email || record.uid}</p>
+                    </div>
+                    <time className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                      <CalendarDays size={13} /> {record.dateKey || 'Date not set'}
+                    </time>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-2">
-              {paginatedAccomplishments.map(record => (
-                <article key={record.id} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-sm font-bold text-blue-700">
-                      {(record.name || 'E').slice(0, 1).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-semibold text-slate-900">{record.name || 'Employee'}</h3>
-                          <p className="mt-0.5 truncate text-xs text-slate-500">{record.employeeId || record.email || record.uid}</p>
-                        </div>
-                        <time className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          <CalendarDays size={13} /> {record.dateKey || 'Date not set'}
-                        </time>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-4 whitespace-pre-wrap break-words border-t border-slate-100 pt-4 text-sm leading-6 text-slate-700">
-                    {record.accomplishment || 'No accomplishment text.'}
-                  </p>
-                  {record.remarks && (
-                    <p className="mt-3 rounded-xl bg-amber-50/70 px-3.5 py-3 text-sm leading-6 text-slate-600">
-                      <span className="font-semibold text-slate-700">Remarks: </span>{record.remarks}
-                    </p>
-                  )}
-                </article>
-              ))}
-              {filteredAccomplishments.length === 0 && (
-                <div className="col-span-full px-4 py-12 text-center">
-                  <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
-                    <FileText size={21} />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-700">No accomplishments found</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {month ? `No reports were submitted for ${month}.` : 'This employee has not submitted any reports yet.'}
-                  </p>
-                </div>
-              )}
-            </div>
-            {accomplishmentPageCount > 1 && (
-              <nav
-                aria-label="Department accomplishment pages"
-                className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
-              >
-                <p className="text-sm text-slate-500">
-                  Showing {(currentAccomplishmentPage - 1) * accomplishmentPageSize + 1}–
-                  {Math.min(currentAccomplishmentPage * accomplishmentPageSize, filteredAccomplishments.length)} of {filteredAccomplishments.length} reports
+              <p className="mt-4 whitespace-pre-wrap break-words border-t border-slate-100 pt-4 text-sm leading-6 text-slate-700">
+                {record.accomplishment || 'No accomplishment text.'}
+              </p>
+              {record.remarks && (
+                <p className="mt-3 rounded-xl bg-amber-50/70 px-3.5 py-3 text-sm leading-6 text-slate-600">
+                  <span className="font-semibold text-slate-700">Remarks: </span>{record.remarks}
                 </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAccomplishmentPage(currentAccomplishmentPage - 1)}
-                    disabled={currentAccomplishmentPage === 1}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={16} /> Previous
-                  </button>
-                  <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
-                    Page {currentAccomplishmentPage} of {accomplishmentPageCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setAccomplishmentPage(currentAccomplishmentPage + 1)}
-                    disabled={currentAccomplishmentPage === accomplishmentPageCount}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Next <ChevronRight size={16} />
-                  </button>
-                </div>
-              </nav>
-            )}
-          </>
+              )}
+            </article>
+          ))}
+          {filteredAccomplishments.length === 0 && (
+            <div className="col-span-full px-4 py-12 text-center">
+              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
+                <FileText size={21} />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-700">No accomplishments found</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {month
+                  ? `No reports were submitted for ${month}${selectedPerson ? ` by ${selectedPerson.name}` : ''}.`
+                  : `No reports were submitted${selectedPerson ? ` by ${selectedPerson.name}` : ' by department employees'} yet.`}
+              </p>
+            </div>
+          )}
+        </div>
+        {accomplishmentPageCount > 1 && (
+          <nav
+            aria-label="Department accomplishment pages"
+            className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          >
+            <p className="text-sm text-slate-500">
+              Showing {(currentAccomplishmentPage - 1) * accomplishmentPageSize + 1}–
+              {Math.min(currentAccomplishmentPage * accomplishmentPageSize, filteredAccomplishments.length)} of {filteredAccomplishments.length} reports
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAccomplishmentPage(currentAccomplishmentPage - 1)}
+                disabled={currentAccomplishmentPage === 1}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span aria-live="polite" className="px-1 text-sm font-medium tabular-nums text-slate-600">
+                Page {currentAccomplishmentPage} of {accomplishmentPageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAccomplishmentPage(currentAccomplishmentPage + 1)}
+                disabled={currentAccomplishmentPage === accomplishmentPageCount}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+          </nav>
         )}
       </section>
 
@@ -737,7 +647,7 @@ export default function Admin() {
             </div>
             <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-500">
               <Clock3 size={15} className="mt-0.5 shrink-0" />
-              Use the attendance date for each time and keep the checkpoints in chronological order.
+              Use the attendance date for each time.
             </p>
             <div className="mt-7 flex justify-end gap-2.5">
               <button

@@ -173,11 +173,6 @@ export async function updateAttendanceAsAdmin(user, record, values) {
   if (!times.timeIn1) {
     throw new Error('AM Time In is required. To remove this attendance record, contact your system administrator.')
   }
-  if ((times.timeOut1 && times.timeOut1 <= times.timeIn1)
-    || (times.timeIn2 && (!times.timeOut1 || times.timeIn2 <= times.timeOut1))
-    || (times.timeOut2 && (!times.timeIn2 || times.timeOut2 <= times.timeIn2))) {
-    throw new Error('Time logs must be entered in chronological order.')
-  }
   if (Object.values(times).some(value => value && getLocalDateKey(value) !== record.dateKey)) {
     throw new Error('All time logs must be on the attendance date.')
   }
