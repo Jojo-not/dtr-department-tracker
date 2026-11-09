@@ -48,6 +48,65 @@ function csvCell(value) {
   return `"${safeText.replaceAll('"', '""')}"`
 }
 
+function getWeeklyReportPeriods(month, accomplishments, rangeStart, rangeEnd) {
+  const today = getLocalDateKey()
+  const hasCustomRange = Boolean(rangeStart || rangeEnd)
+  const firstSubmission = accomplishments
+    .map(record => record.dateKey)
+    .filter(dateKey => /^\d{4}-\d{2}-\d{2}$/.test(dateKey || '') && dateKey <= today)
+    .sort()[0]
+  const startKey = rangeStart || (month && !hasCustomRange ? `${month}-01` : firstSubmission || `${today.slice(0, 7)}-01`)
+  const lastDayOfMonth = month && !hasCustomRange
+    ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    : today
+  const requestedEnd = rangeEnd || lastDayOfMonth
+  const endKey = requestedEnd < today ? requestedEnd : today
+  if (startKey > endKey) return []
+
+  const cursor = new Date(`${startKey}T00:00:00Z`)
+  cursor.setUTCDate(cursor.getUTCDate() - ((cursor.getUTCDay() + 6) % 7))
+  const periods = []
+
+  while (cursor.toISOString().slice(0, 10) <= endKey) {
+    const weekStart = cursor.toISOString().slice(0, 10)
+    cursor.setUTCDate(cursor.getUTCDate() + 6)
+    const weekEnd = cursor.toISOString().slice(0, 10)
+    periods.push({
+      start: weekStart < startKey ? startKey : weekStart,
+      end: weekEnd > endKey ? endKey : weekEnd,
+    })
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+
+  return periods
+}
+
+function weeklySubmissionStatus(personId, period, submittedPeople, attendance) {
+  if (submittedPeople.has(personId)) return 'Yes'
+  const awayStatuses = new Set(
+    attendance
+      .filter(record => (
+        record.uid === personId
+        && record.dateKey >= period.start
+        && record.dateKey <= period.end
+        && ['LEAVE', 'TRAVEL'].includes(record.status)
+      ))
+      .map(record => record.status),
+  )
+  if (awayStatuses.has('LEAVE') && awayStatuses.has('TRAVEL')) return 'On Leave / On Travel'
+  if (awayStatuses.has('LEAVE')) return 'On Leave'
+  if (awayStatuses.has('TRAVEL')) return 'On Travel'
+  return 'No'
+}
+
+function formatReportDate(dateKey) {
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${dateKey}T00:00:00Z`))
+}
+
 function showSubscriptionError(error, source) {
   console.error(`${source} subscription failed:`, error)
   return error?.code === 'permission-denied'
@@ -62,6 +121,8 @@ export default function Admin() {
   const [accomplishments, setAccomplishments] = useState([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState('all')
+  const [reportStartDate, setReportStartDate] = useState('')
+  const [reportEndDate, setReportEndDate] = useState('')
   const [attendancePage, setAttendancePage] = useState(1)
   const [accomplishmentPage, setAccomplishmentPage] = useState(1)
   const [month, setMonth] = useState(() => getLocalDateKey().slice(0, 7))
@@ -165,6 +226,24 @@ export default function Admin() {
     () => [...people].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [people],
   )
+  const weeklyReportPeople = orderedPeople.filter(
+    person => selectedEmployee === 'all' || person.id === selectedEmployee,
+  )
+  const weeklyReportPeriods = useMemo(
+    () => getWeeklyReportPeriods(month, accomplishments, reportStartDate, reportEndDate),
+    [accomplishments, month, reportEndDate, reportStartDate],
+  )
+  const invalidReportRange = Boolean(
+    reportStartDate && reportEndDate && reportStartDate > reportEndDate,
+  )
+  const weeklySubmissions = useMemo(
+    () => weeklyReportPeriods.map(period => new Set(
+      accomplishments
+        .filter(record => record.dateKey >= period.start && record.dateKey <= period.end)
+        .map(record => record.uid),
+    )),
+    [accomplishments, weeklyReportPeriods],
+  )
   const selectedPerson = people.find(person => person.id === selectedEmployee)
 
   const activeCount = filteredAttendance.filter(record => ['IN', 'BREAK'].includes(record.status)).length
@@ -248,6 +327,96 @@ export default function Admin() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     setError('')
     setMessage(`Exported ${attendance.length} department time ${attendance.length === 1 ? 'log' : 'logs'}.`)
+  }
+
+  function exportWeeklySubmissionReport() {
+    if (weeklyReportPeople.length === 0 || weeklyReportPeriods.length === 0) {
+      setError('There is no weekly accomplishment report to export for the selected filters.')
+      setMessage('')
+      return
+    }
+
+    const headers = [
+      'Week Start',
+      'Week End',
+      'Date',
+      'Employee',
+      'Employee ID',
+      'Email',
+      'Submitted This Week',
+      'Attendance Status',
+      ...timeFields.map(([, label]) => label),
+      'Accomplishment',
+      'Remarks',
+    ]
+    const rows = []
+
+    weeklyReportPeople.forEach(person => {
+      weeklyReportPeriods.forEach((period, periodIndex) => {
+        const periodAttendance = attendance.filter(record => (
+          record.uid === person.id
+          && record.dateKey >= period.start
+          && record.dateKey <= period.end
+        ))
+        const periodAccomplishments = accomplishments.filter(record => (
+          record.uid === person.id
+          && record.dateKey >= period.start
+          && record.dateKey <= period.end
+        ))
+        const activityDates = [...new Set([
+          ...periodAttendance.map(record => record.dateKey),
+          ...periodAccomplishments.map(record => record.dateKey),
+        ].filter(dateKey => /^\d{4}-\d{2}-\d{2}$/.test(dateKey || '')))].sort()
+        const dates = activityDates.length > 0 ? activityDates : ['']
+
+        dates.forEach(dateKey => {
+          const attendanceRecord = periodAttendance.find(record => record.dateKey === dateKey)
+          const dateAccomplishments = periodAccomplishments.filter(record => record.dateKey === dateKey)
+          const times = attendanceTimes(attendanceRecord)
+          const submissionStatus = weeklySubmissionStatus(
+            person.id,
+            period,
+            weeklySubmissions[periodIndex],
+            attendance,
+          )
+          rows.push([
+            period.start,
+            period.end,
+            dateKey,
+            person.name || 'Employee',
+            person.employeeId,
+            person.email,
+            submissionStatus,
+            attendanceRecord?.status === 'LEAVE'
+              ? 'On Leave'
+              : attendanceRecord?.status === 'TRAVEL'
+                ? 'On Travel'
+                : attendanceRecord?.status,
+            ...timeFields.map(([field]) => times[field] ? formatTime(times[field]) : ''),
+            dateAccomplishments.map(record => record.accomplishment || '').filter(Boolean).join('\n'),
+            dateAccomplishments.map(record => record.remarks || '').filter(Boolean).join('\n'),
+          ].map(csvCell))
+        })
+      })
+    })
+
+    const csv = [headers.map(csvCell), ...rows].map(row => row.join(',')).join('\r\n')
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const departmentName = String(profile?.department || 'department')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+    const dateRange = `${weeklyReportPeriods[0].start}-to-${weeklyReportPeriods[weeklyReportPeriods.length - 1].end}`
+    link.href = url
+    link.download = `${departmentName || 'department'}-weekly-submission-report-${dateRange}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setError('')
+    setMessage(`Exported ${rows.length} weekly report ${rows.length === 1 ? 'row' : 'rows'}.`)
   }
 
   return (
@@ -516,6 +685,133 @@ export default function Admin() {
             </p>
           </div>
         </div>
+        <section aria-label="Weekly accomplishment submission report" className="border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Weekly submission report</h3>
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
+                Review weekly submissions, daily attendance, and accomplishments. Employees marked on leave or travel are identified when they have no submission that week.
+              </p>
+              <p className="mt-2 text-xs font-medium text-slate-400">
+                {reportStartDate || reportEndDate
+                  ? `Custom range: ${reportStartDate || 'earliest available'} to ${reportEndDate || 'today'}`
+                  : month
+                    ? `Selected month: ${month}`
+                    : 'All available dates'}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-600">From date</span>
+                <input
+                  type="date"
+                  value={reportStartDate}
+                  max={getLocalDateKey()}
+                  onChange={event => setReportStartDate(event.target.value)}
+                  aria-label="Weekly report start date"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 sm:w-40"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-600">To date</span>
+                <input
+                  type="date"
+                  value={reportEndDate}
+                  min={reportStartDate || undefined}
+                  max={getLocalDateKey()}
+                  onChange={event => setReportEndDate(event.target.value)}
+                  aria-label="Weekly report end date"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 sm:w-40"
+                />
+              </label>
+              {(reportStartDate || reportEndDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportStartDate('')
+                    setReportEndDate('')
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <X size={15} /> Clear dates
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={exportWeeklySubmissionReport}
+                disabled={invalidReportRange || weeklyReportPeriods.length === 0 || weeklyReportPeople.length === 0}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download size={16} /> Export CSV
+              </button>
+            </div>
+          </div>
+          {invalidReportRange && (
+            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+              The start date must be on or before the end date.
+            </p>
+          )}
+          {weeklyReportPeriods.length > 0 && weeklyReportPeople.length > 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full min-w-[700px] text-left">
+                <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
+                  <tr>
+                    <th scope="col" className="sticky left-0 bg-slate-50 px-4 py-3">Employee</th>
+                    {weeklyReportPeriods.map((period, index) => (
+                      <th scope="col" key={period.start} className="px-4 py-3 text-center">
+                        <span className="block text-slate-700">Week {index + 1}</span>
+                        <span className="mt-0.5 block whitespace-nowrap font-normal">
+                          {formatReportDate(period.start)} – {formatReportDate(period.end)}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {weeklyReportPeople.map(person => (
+                    <tr key={person.id}>
+                      <th scope="row" className="sticky left-0 bg-white px-4 py-3 text-left">
+                        <span className="block text-sm font-semibold text-slate-800">{person.name || 'Employee'}</span>
+                        <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                          {person.employeeId || person.email || ''}
+                        </span>
+                      </th>
+                      {weeklySubmissions.map((submittedPeople, index) => {
+                        const status = weeklySubmissionStatus(
+                          person.id,
+                          weeklyReportPeriods[index],
+                          submittedPeople,
+                          attendance,
+                        )
+                        const statusTone = status === 'Yes'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : status.startsWith('On ')
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-500'
+                        return (
+                          <td key={weeklyReportPeriods[index].start} className="px-4 py-3 text-center">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone}`}>
+                              {status === 'Yes' ? <CheckCircle2 size={14} /> : status.startsWith('On ') ? <Clock3 size={14} /> : <X size={14} />}
+                              {status}
+                            </span>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              {invalidReportRange
+                ? 'Choose a valid date range to view this report.'
+                : weeklyReportPeople.length === 0
+                ? 'No department employees found.'
+                : 'No weeks are available for this date range.'}
+            </p>
+          )}
+        </section>
         <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-2">
           {paginatedAccomplishments.map(record => (
             <article key={record.id} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm">
