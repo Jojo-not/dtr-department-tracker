@@ -689,9 +689,6 @@ export default function Admin() {
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h3 className="text-base font-semibold text-slate-900">Weekly submission report</h3>
-              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
-                Review weekly submissions, daily attendance, and accomplishments. Employees marked on leave or travel are identified when they have no submission that week.
-              </p>
               <p className="mt-2 text-xs font-medium text-slate-400">
                 {reportStartDate || reportEndDate
                   ? `Custom range: ${reportStartDate || 'earliest available'} to ${reportEndDate || 'today'}`
